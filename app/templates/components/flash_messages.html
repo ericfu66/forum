@@ -1,0 +1,21 @@
+{# Flash消息组件 #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages" style="position: fixed; top: 80px; right: 20px; z-index: 9999;">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} fade-in" style="margin-bottom: 12px; min-width: 250px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        <script>
+            // 自动隐藏Flash消息
+            setTimeout(() => {
+                document.querySelectorAll('.flash-messages .alert').forEach(el => {
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 300);
+                });
+            }, 5000);
+        </script>
+    {% endif %}
+{% endwith %}

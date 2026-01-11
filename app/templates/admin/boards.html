@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block title %}版块管理 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.board-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.board-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    transition: all var(--transition-fast);
+    cursor: grab;
+    border: 2px solid transparent;
+}
+
+.board-card:hover {
+    border-color: var(--primary-color);
+}
+
+.board-card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.board-card.editing {
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-md);
+}
+
+.board-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.board-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.board-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.board-slug {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.board-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.board-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.board-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* 编辑表单 */
+.edit-form {
+    display: none;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.board-card.editing .edit-form {
+    display: block;
+}
+
+.board-card.editing .board-info {
+    display: none;
+}
+
+.edit-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.edit-row .form-group {
+    margin-bottom: 0;
+}
+
+/* 创建版块模态框 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* 表情选择器 */
+.emoji-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.emoji-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all var(--transition-fast);
+}
+
+.emoji-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+}
+
+.emoji-btn.selected {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* 状态标签 */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.status-inactive {
+    background: #FFEBEE;
+    color: #C62828;
+}
+
+/* 拖拽提示 */
+.drag-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="admin-header">
+        <div>
+            <h1>版块管理</h1>
+            <p class="drag-hint">💡 拖拽版块可调整顺序</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button onclick="openCreateModal()" class="btn btn-primary">➕ 创建版块</button>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+        </div>
+    </div>
+
+    <!-- 版块列表 -->
+    <div class="board-grid" id="board-list">
+        {% for board in boards %}
+        <div class="board-card" data-board-id="{{ board.id }}" draggable="true">
+            <div class="board-icon-wrapper" style="background: {{ board.color }}20;">
+                <span class="board-icon-display">{{ board.icon }}</span>
+            </div>
+            <div class="board-info">
+                <div class="board-name">{{ board.name }}</div>
+                <div class="board-slug">/board/{{ board.slug }}</div>
+                <div class="board-desc">{{ board.description or '暂无描述' }}</div>
+                <div class="board-stats">
+                    <span>📝 {{ board.post_count }} 帖子</span>
+                    <span>📊 排序: {{ board.order }}</span>
+                    {% if board.is_active %}
+                    <span class="status-badge status-active">启用</span>
+                    {% else %}
+                    <span class="status-badge status-inactive">禁用</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="board-actions">
+                <button onclick="editBoard({{ board.id }})" class="btn btn-ghost btn-sm">✏️ 编辑</button>
+                <button onclick="deleteBoard({{ board.id }}, '{{ board.name }}')" class="btn btn-ghost btn-sm" style="color: #F44336;">🗑️ 删除</button>
+            </div>
+
+            <!-- 编辑表单 -->
+            <div class="edit-form" id="edit-form-{{ board.id }}">
+                <div class="edit-row">
+                    <div class="form-group">
+                        <label class="form-label">名称</label>
+                        <input type="text" class="form-control edit-name" value="{{ board.name }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">标识</label>
+                        <input type="text" class="form-control edit-slug" value="{{ board.slug }}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">描述</label>
+                    <input type="text" class="form-control edit-desc" value="{{ board.description }}">
+                </div>
+                <div class="edit-row">
+                    <div class="form-group">
+                        <label class="form-label">图标</label>
+                        <input type="text" class="form-control edit-icon" value="{{ board.icon }}" style="width: 80px;">
+                        <div class="emoji-picker">
+                            {% for emoji in ['📁', '💬', '📝', '💡', '🎮', '🎬', '📚', '💻', '🎵', '🏆', '❓', '📢'] %}
+                            <button type="button" class="emoji-btn" onclick="selectEmoji(this, {{ board.id }})">{{ emoji }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">颜色</label>
+                        <input type="color" class="form-control edit-color" value="{{ board.color }}" style="width: 80px; height: 44px;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">排序</label>
+                        <input type="number" class="form-control edit-order" value="{{ board.order }}" style="width: 80px;">
+                    </div>
+                </div>
+                <div class="board-toggle">
+                    <input type="checkbox" class="edit-active" id="active-{{ board.id }}" {{ 'checked' if board.is_active else '' }}>
+                    <label for="active-{{ board.id }}">启用版块</label>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                    <button onclick="saveBoard({{ board.id }})" class="btn btn-primary btn-sm">💾 保存</button>
+                    <button onclick="cancelEdit({{ board.id }})" class="btn btn-ghost btn-sm">取消</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not boards %}
+        <div style="text-align: center; padding: 60px; background: var(--bg-secondary); border-radius: var(--radius-lg);">
+            <p style="font-size: 3rem;">📁</p>
+            <h3>暂无版块</h3>
+            <p class="text-muted">点击上方按钮创建第一个版块</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 创建版块模态框 -->
+<div class="modal-overlay" id="create-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>创建新版块</h2>
+            <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_board') }}">
+            <div class="form-group">
+                <label class="form-label">版块名称 *</label>
+                <input type="text" name="name" class="form-control" placeholder="例如：技术交流" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">标识 (slug) *</label>
+                <input type="text" name="slug" class="form-control" placeholder="例如：tech" required>
+                <small class="text-muted">用于URL，只能包含字母、数字和横线</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">描述</label>
+                <input type="text" name="description" class="form-control" placeholder="版块简介">
+            </div>
+            <div style="display: flex; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">图标</label>
+                    <input type="text" name="icon" id="new-board-icon" class="form-control" value="📁" style="width: 80px;">
+                    <div class="emoji-picker">
+                        {% for emoji in ['📁', '💬', '📝', '💡', '🎮', '🎬', '📚', '💻', '🎵', '🏆', '❓', '📢'] %}
+                        <button type="button" class="emoji-btn" onclick="selectNewEmoji(this)">{{ emoji }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">颜色</label>
+                    <input type="color" name="color" class="form-control" value="#2196F3" style="width: 80px; height: 44px;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">排序</label>
+                    <input type="number" name="order" class="form-control" value="0" style="width: 80px;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">创建版块</button>
+                <button type="button" class="btn btn-ghost" onclick="closeCreateModal()">取消</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 模态框
+function openCreateModal() {
+    document.getElementById('create-modal').classList.add('active');
+}
+
+function closeCreateModal() {
+    document.getElementById('create-modal').classList.remove('active');
+}
+
+// 编辑版块
+function editBoard(boardId) {
+    // 关闭其他编辑表单
+    document.querySelectorAll('.board-card.editing').forEach(card => {
+        card.classList.remove('editing');
+    });
+    // 打开当前编辑表单
+    document.querySelector(`[data-board-id="${boardId}"]`).classList.add('editing');
+}
+
+function cancelEdit(boardId) {
+    document.querySelector(`[data-board-id="${boardId}"]`).classList.remove('editing');
+}
+
+async function saveBoard(boardId) {
+    const card = document.querySelector(`[data-board-id="${boardId}"]`);
+    const data = {
+        name: card.querySelector('.edit-name').value,
+        slug: card.querySelector('.edit-slug').value,
+        description: card.querySelector('.edit-desc').value,
+        icon: card.querySelector('.edit-icon').value,
+        color: card.querySelector('.edit-color').value,
+        order: parseInt(card.querySelector('.edit-order').value),
+        is_active: card.querySelector('.edit-active').checked
+    };
+
+    try {
+        const response = await fetch(`/admin/boards/${boardId}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            Utils.showToast('版块已更新', 'success');
+            location.reload();
+        } else {
+            Utils.showToast(result.message, 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('保存失败', 'danger');
+    }
+}
+
+// 删除版块
+async function deleteBoard(boardId, boardName) {
+    if (!confirm(`确定要删除版块"${boardName}"吗？\n\n⚠️ 版块内的帖子将无法正常访问！`)) return;
+
+    try {
+        const response = await fetch(`/admin/boards/${boardId}/delete`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+            Utils.showToast('版块已删除', 'success');
+            location.reload();
+        } else {
+            Utils.showToast(result.message, 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('删除失败', 'danger');
+    }
+}
+
+// 选择表情
+function selectEmoji(btn, boardId) {
+    const card = document.querySelector(`[data-board-id="${boardId}"]`);
+    card.querySelector('.edit-icon').value = btn.textContent;
+}
+
+function selectNewEmoji(btn) {
+    document.getElementById('new-board-icon').value = btn.textContent;
+}
+
+// 拖拽排序
+let draggedItem = null;
+
+document.querySelectorAll('.board-card').forEach(card => {
+    card.addEventListener('dragstart', function(e) {
+        draggedItem = this;
+        this.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', function() {
+        this.classList.remove('dragging');
+        saveBoardOrder();
+    });
+
+    card.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        if (draggedItem !== this) {
+            const list = document.getElementById('board-list');
+            const cards = [...list.querySelectorAll('.board-card')];
+            const draggedIndex = cards.indexOf(draggedItem);
+            const targetIndex = cards.indexOf(this);
+
+            if (draggedIndex < targetIndex) {
+                this.after(draggedItem);
+            } else {
+                this.before(draggedItem);
+            }
+        }
+    });
+});
+
+async function saveBoardOrder() {
+    const cards = document.querySelectorAll('.board-card');
+    const order = [...cards].map(card => parseInt(card.dataset.boardId));
+
+    try {
+        await fetch('/admin/boards/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+        });
+        Utils.showToast('排序已保存', 'success');
+    } catch (e) {
+        console.error('Save order failed:', e);
+    }
+}
+
+// 点击模态框外部关闭
+document.getElementById('create-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCreateModal();
+    }
+});
+</script>
+{% endblock %}

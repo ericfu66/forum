@@ -1,0 +1,2141 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 首页布局 */
+.home-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--section-gap);
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--section-gap) var(--spacing-md);
+}
+
+/* 侧边栏 */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sidebar-section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-premium);
+    overflow: hidden;
+    box-shadow: var(--premium-shadow-soft);
+    transition: box-shadow var(--transition-smooth);
+}
+
+.sidebar-section:hover {
+    box-shadow: var(--premium-shadow);
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    background: var(--premium-gradient-subtle);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-smooth);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sidebar-header:hover {
+    background: var(--primary-light);
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-toggle {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 50%;
+    transition: all var(--transition-smooth);
+    font-size: 0.8rem;
+    position: relative;
+}
+
+.sidebar-toggle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+}
+
+.sidebar-section.collapsed .sidebar-toggle {
+    transform: rotate(-90deg);
+}
+
+.sidebar-content {
+    max-height: 600px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.sidebar-section.collapsed .sidebar-content {
+    max-height: 0;
+}
+
+/* 版块列表 */
+.board-list {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--radius-premium);
+    text-decoration: none;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid transparent;
+    transition: all var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.board-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--premium-gradient-subtle);
+    opacity: 0;
+    transition: opacity var(--transition-smooth);
+}
+
+.board-item:hover {
+    transform: translateX(6px) translateY(-2px);
+    border-color: var(--glass-border);
+    box-shadow: var(--premium-shadow);
+}
+
+.board-item:hover::before {
+    opacity: 1;
+}
+
+.board-item.active {
+    background: var(--premium-gradient-1);
+    color: white;
+    border-color: transparent;
+    box-shadow: var(--premium-shadow-hover);
+}
+
+.board-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--radius-lg);
+    font-size: 1.4rem;
+    transition: all var(--transition-smooth);
+    position: relative;
+    z-index: 1;
+}
+
+.board-item:hover .board-icon-wrapper {
+    transform: scale(1.1);
+    box-shadow: var(--premium-shadow-soft);
+}
+
+.board-item.active .board-icon-wrapper {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.board-info {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.board-info-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+.board-info-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.board-item.active .board-info-desc {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.board-count {
+    padding: 5px 10px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    position: relative;
+    z-index: 1;
+}
+
+.board-item.active .board-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+
+/* AI功能卡片 */
+.ai-card {
+    padding: 16px;
+}
+
+.ai-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    border-radius: var(--radius-premium);
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+    transition: all var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-btn:last-child {
+    margin-bottom: 0;
+}
+
+.ai-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%);
+    opacity: 0;
+    transition: opacity var(--transition-smooth);
+}
+
+.ai-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.ai-btn:hover::before {
+    opacity: 1;
+}
+
+.ai-btn:hover::after {
+    width: 300px;
+    height: 300px;
+}
+
+.ai-btn-chat {
+    background: var(--premium-gradient-1);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}
+
+.ai-btn-write {
+    background: var(--premium-gradient-4);
+    box-shadow: 0 4px 20px rgba(67, 233, 123, 0.4);
+}
+
+.ai-btn-image {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 20px rgba(240, 147, 251, 0.4);
+}
+
+.ai-btn-novel {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    box-shadow: 0 4px 20px rgba(168, 237, 234, 0.4);
+    color: #333;
+}
+
+.ai-btn:hover {
+    transform: translateY(-3px);
+}
+
+.ai-btn-chat:hover {
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.5);
+}
+
+.ai-btn-write:hover {
+    box-shadow: 0 8px 32px rgba(67, 233, 123, 0.5);
+}
+
+.ai-btn-image:hover {
+    box-shadow: 0 8px 32px rgba(240, 147, 251, 0.5);
+}
+
+.ai-btn-novel:hover {
+    box-shadow: 0 8px 32px rgba(168, 237, 234, 0.5);
+}
+
+.ai-btn-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.ai-btn-content {
+    position: relative;
+    z-index: 1;
+}
+
+.ai-btn-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.ai-btn-desc {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+/* 每日序言卡片 - 高端版 */
+.daily-quote-card {
+    position: relative;
+    background: var(--premium-gradient-1);
+    border-radius: var(--radius-premium-lg);
+    padding: 32px;
+    margin-bottom: var(--section-gap);
+    overflow: hidden;
+    box-shadow: var(--premium-shadow-hover);
+}
+
+.daily-quote-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    opacity: 0.1;
+}
+
+.daily-quote-card::after {
+    content: '"';
+    position: absolute;
+    top: -30px;
+    left: 20px;
+    font-size: 180px;
+    color: rgba(255, 255, 255, 0.08);
+    font-family: Georgia, serif;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.quote-decoration-end {
+    position: absolute;
+    bottom: -30px;
+    right: 30px;
+    font-size: 180px;
+    color: rgba(255, 255, 255, 0.08);
+    font-family: Georgia, serif;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.quote-content {
+    position: relative;
+    z-index: 1;
+}
+
+.quote-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white;
+    line-height: 1.8;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-family: "楷体", "KaiTi", Georgia, serif;
+    letter-spacing: 3px;
+    min-height: 60px;
+    transition: opacity var(--transition-smooth);
+}
+
+.quote-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.quote-date {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quote-refresh {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 10px 20px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quote-refresh:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.quote-refresh.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.quote-refresh.loading .refresh-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+
+/* 运势卡片 */
+.fortune-card-inner {
+    padding: 16px;
+}
+
+.fortune-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+.fortune-display {
+    text-align: center;
+    padding: 8px;
+}
+
+.fortune-emoji {
+    font-size: 3.5rem;
+    margin-bottom: 12px;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.fortune-score-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.fortune-score-big {
+    font-size: 3rem;
+    font-weight: 800;
+    background: var(--premium-gradient-2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.fortune-level-badge {
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.fortune-level-badge.great {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #16a34a;
+}
+
+.fortune-level-badge.good {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #d97706;
+}
+
+.fortune-level-badge.normal {
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    color: #6b7280;
+}
+
+.fortune-message-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.fortune-lucky-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--premium-gradient-subtle);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-pill);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--primary-color);
+}
+
+.fortune-refresh-btn {
+    margin-top: 16px;
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition-smooth);
+}
+
+.fortune-refresh-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* 快速统计 */
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 16px 12px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-premium);
+    transition: all var(--transition-smooth);
+}
+
+.stat-item:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--premium-shadow);
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: var(--premium-gradient-1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* 主内容区 */
+.main-content {
+    min-width: 0;
+}
+
+/* 内容头部 */
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.content-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 帖子卡片增强 */
+.post-card {
+    position: relative;
+    overflow: hidden;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-premium);
+    padding: var(--card-padding);
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: all var(--transition-smooth);
+}
+
+.post-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: transparent;
+    transition: background var(--transition-smooth);
+}
+
+.post-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--premium-shadow-hover);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.post-card:hover::before {
+    background: var(--premium-gradient-1);
+}
+
+.post-card-pinned {
+    border-left: 4px solid;
+    border-image: var(--premium-gradient-1) 1;
+}
+
+.post-card-pinned::before {
+    display: none;
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.post-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.post-author-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.post-time {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.post-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.post-preview {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 8px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.95rem;
+}
+
+.post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.post-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-premium);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+}
+
+.empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.empty-state-desc {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+
+/* 响应式 - 平板 */
+@media (max-width: 1024px) {
+    .home-container {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        order: 2;
+    }
+
+    .main-content {
+        order: 1;
+    }
+
+    .sidebar-content {
+        max-height: none;
+    }
+
+    .board-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+    }
+}
+
+/* ============================================
+   移动端完全重写 - 高端美观设计
+   ============================================ */
+@media (max-width: 768px) {
+    /* 隐藏桌面版布局 */
+    .home-container {
+        display: none !important;
+    }
+    
+    /* 显示移动端专属布局 */
+    .mobile-home {
+        display: block !important;
+    }
+}
+
+/* 移动端专属样式 */
+.mobile-home {
+    display: none;
+    min-height: calc(100vh - 60px);
+    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    padding-bottom: 60px;
+}
+
+/* 移动端顶部欢迎区 */
+.mobile-welcome-section {
+    position: relative;
+    padding: 18px 16px 24px;
+    background: var(--premium-gradient-1);
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.mobile-welcome-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 150px;
+    height: 150px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.mobile-welcome-section::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -20%;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+}
+
+.mobile-welcome-content {
+    position: relative;
+    z-index: 1;
+}
+
+.mobile-greeting {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+.mobile-welcome-title {
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 移动端每日箴言 */
+.mobile-quote-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.mobile-quote-text {
+    color: white;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    font-family: "楷体", "KaiTi", Georgia, serif;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.mobile-quote-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-quote-date {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mobile-quote-refresh {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 16px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s;
+}
+
+.mobile-quote-refresh:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 移动端AI功能入口 - 横向滚动卡片 */
+.mobile-ai-section {
+    padding: 0 12px;
+    margin-bottom: 16px;
+}
+
+.mobile-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.mobile-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mobile-ai-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 0 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.mobile-ai-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.mobile-ai-card {
+    flex: 0 0 auto;
+    width: 100px;
+    padding: 14px 10px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: white;
+    text-align: center;
+    scroll-snap-align: start;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-ai-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.mobile-ai-card:active {
+    transform: scale(0.96);
+}
+
+.mobile-ai-card:active::before {
+    opacity: 1;
+}
+
+.mobile-ai-card-chat {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.mobile-ai-card-write {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    box-shadow: 0 4px 16px rgba(67, 233, 123, 0.3);
+}
+
+.mobile-ai-card-image {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 16px rgba(240, 147, 251, 0.3);
+}
+
+.mobile-ai-card-novel {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    box-shadow: 0 4px 16px rgba(168, 237, 234, 0.3);
+    color: #333;
+}
+
+.mobile-ai-icon {
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.mobile-ai-title {
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+.mobile-ai-desc {
+    font-size: 0.65rem;
+    opacity: 0.85;
+}
+
+/* 移动端快速统计 */
+.mobile-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 0 12px;
+    margin-bottom: 16px;
+}
+
+.mobile-stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.mobile-stat-card:active {
+    transform: scale(0.96);
+}
+
+.mobile-stat-value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    background: var(--premium-gradient-1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.mobile-stat-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* 移动端版块导航 - 网格布局 */
+.mobile-boards-section {
+    padding: 0 12px;
+    margin-bottom: 16px;
+}
+
+.mobile-boards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.mobile-board-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 10px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-board-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--premium-gradient-subtle);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.mobile-board-card:active {
+    transform: scale(0.96);
+}
+
+.mobile-board-card:active::before {
+    opacity: 1;
+}
+
+.mobile-board-card.active {
+    background: var(--premium-gradient-1);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.mobile-board-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s;
+}
+
+.mobile-board-card.active .mobile-board-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-board-name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+.mobile-board-count {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    position: relative;
+    z-index: 1;
+}
+
+.mobile-board-card.active .mobile-board-count {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 移动端今日运势 */
+.mobile-fortune-section {
+    padding: 0 12px;
+    margin-bottom: 16px;
+}
+
+.mobile-fortune-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+}
+
+.mobile-fortune-emoji {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.mobile-fortune-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.mobile-fortune-score {
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: var(--premium-gradient-2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.mobile-fortune-level {
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.mobile-fortune-level.great {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #16a34a;
+}
+
+.mobile-fortune-level.good {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #d97706;
+}
+
+.mobile-fortune-level.normal {
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    color: #6b7280;
+}
+
+.mobile-fortune-message {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.mobile-fortune-lucky {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--premium-gradient-subtle);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    font-size: 0.75rem;
+    color: var(--primary-color);
+}
+
+/* 移动端帖子列表 */
+.mobile-posts-section {
+    padding: 0 12px;
+}
+
+.mobile-posts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.mobile-create-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 14px;
+    background: var(--premium-gradient-1);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s;
+}
+
+.mobile-create-btn:active {
+    transform: scale(0.95);
+}
+
+/* 移动端帖子卡片 */
+.mobile-post-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-post-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+    transition: background 0.3s;
+}
+
+.mobile-post-card:active {
+    transform: scale(0.98);
+}
+
+.mobile-post-card:active::before {
+    background: var(--premium-gradient-1);
+}
+
+.mobile-post-card.pinned {
+    border-left: 3px solid;
+    border-image: var(--premium-gradient-1) 1;
+}
+
+.mobile-post-card.pinned::before {
+    display: none;
+}
+
+.mobile-post-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.mobile-post-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.mobile-post-author-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-post-author {
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mobile-post-time {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.mobile-post-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.mobile-post-preview {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.mobile-post-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.mobile-post-stat {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.mobile-post-board {
+    margin-left: auto;
+    padding: 3px 8px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* 移动端空状态 */
+.mobile-empty-state {
+    text-align: center;
+    padding: 36px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+}
+
+.mobile-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.mobile-empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.mobile-empty-desc {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+}
+
+/* 移动端置顶标签 */
+.mobile-pin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 600;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+/* 移动端加载动画 */
+.mobile-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+.mobile-loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 桌面端隐藏移动端布局 */
+@media (min-width: 769px) {
+    .mobile-home {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <!-- 版块列表 -->
+        <div class="sidebar-section stagger-animation" id="boards-section">
+            <div class="sidebar-header" onclick="toggleSection('boards-section')">
+                <h3>📁 版块导航</h3>
+                <span class="sidebar-toggle">▼</span>
+            </div>
+            <div class="sidebar-content">
+                <div class="board-list">
+                    <a href="{{ url_for('main.index') }}" class="board-item active">
+                        <div class="board-icon-wrapper">🏠</div>
+                        <div class="board-info">
+                            <div class="board-info-name">全部帖子</div>
+                            <div class="board-info-desc">浏览所有版块内容</div>
+                        </div>
+                    </a>
+                    {% for board in boards %}
+                    <a href="{{ url_for('post.board', slug=board.slug) }}" class="board-item">
+                        <div class="board-icon-wrapper">{{ board.icon }}</div>
+                        <div class="board-info">
+                            <div class="board-info-name">{{ board.name }}</div>
+                            <div class="board-info-desc">{{ board.description or '暂无描述' }}</div>
+                        </div>
+                        <span class="board-count">{{ board.post_count }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- AI功能 -->
+        {% if ai_chat_enabled or ai_write_enabled or ai_image_enabled %}
+        <div class="sidebar-section stagger-animation" id="ai-section">
+            <div class="sidebar-header" onclick="toggleSection('ai-section')">
+                <h3>🤖 AI 助手</h3>
+                <span class="sidebar-toggle">▼</span>
+            </div>
+            <div class="sidebar-content">
+                <div class="ai-card">
+                    {% if ai_chat_enabled %}
+                    <a href="{{ url_for('ai.chat') }}" class="ai-btn ai-btn-chat">
+                        <div class="ai-btn-icon">💬</div>
+                        <div class="ai-btn-content">
+                            <div class="ai-btn-title">AI 对话</div>
+                            <div class="ai-btn-desc">智能问答助手</div>
+                        </div>
+                    </a>
+                    {% endif %}
+                    {% if ai_write_enabled %}
+                    <a href="{{ url_for('ai.write') }}" class="ai-btn ai-btn-write">
+                        <div class="ai-btn-icon">✍️</div>
+                        <div class="ai-btn-content">
+                            <div class="ai-btn-title">AI 写稿</div>
+                            <div class="ai-btn-desc">一键生成文章</div>
+                        </div>
+                    </a>
+                    {% endif %}
+                    {% if ai_image_enabled %}
+                    <a href="{{ url_for('ai.image') }}" class="ai-btn ai-btn-image">
+                        <div class="ai-btn-icon">🎨</div>
+                        <div class="ai-btn-content">
+                            <div class="ai-btn-title">AI 绘图</div>
+                            <div class="ai-btn-desc">文字生成图片</div>
+                        </div>
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('novel.index') }}" class="ai-btn ai-btn-novel">
+                        <div class="ai-btn-icon">📚</div>
+                        <div class="ai-btn-content">
+                            <div class="ai-btn-title">AI 小说</div>
+                            <div class="ai-btn-desc">沉浸式互动故事</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 快速统计 -->
+        <div class="sidebar-section stagger-animation" id="stats-section">
+            <div class="sidebar-header" onclick="toggleSection('stats-section')">
+                <h3>📊 统计</h3>
+                <span class="sidebar-toggle">▼</span>
+            </div>
+            <div class="sidebar-content">
+                <div class="quick-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ boards|length }}</div>
+                        <div class="stat-label">版块</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ (pinned_posts|length) + (recent_posts|length) }}</div>
+                        <div class="stat-label">帖子</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ recent_posts|sum(attribute='reply_count') if recent_posts else 0 }}</div>
+                        <div class="stat-label">回复</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今日运势 -->
+        {% if current_user.is_authenticated %}
+        <div class="sidebar-section stagger-animation" id="fortune-section">
+            <div class="sidebar-header" onclick="toggleSection('fortune-section')">
+                <h3>🔮 今日运势</h3>
+                <span class="sidebar-toggle">▼</span>
+            </div>
+            <div class="sidebar-content">
+                <div class="fortune-card-inner" id="fortune-card">
+                    <div class="fortune-loading">
+                        <span class="loading-spinner loading-spinner-sm"></span>
+                        <span>加载中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 每日序言 -->
+        <div class="daily-quote-card stagger-animation">
+            <span class="quote-decoration-end">"</span>
+            <div class="quote-content">
+                <div class="quote-text" id="daily-quote">博学笃志，切问近思 —— 卢湾高级中学</div>
+                <div class="quote-footer">
+                    <span class="quote-date">📅 今日箴言</span>
+                    <button class="quote-refresh" onclick="refreshQuote()" id="quote-refresh-btn">
+                        <span class="refresh-icon">🔄</span>
+                        <span>换一条</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 置顶帖子 -->
+        {% if pinned_posts %}
+        <section style="margin-bottom: 32px;">
+            <div class="content-header">
+                <h2 class="content-title">📌 置顶公告</h2>
+            </div>
+            {% for post in pinned_posts %}
+            <div class="post-card post-card-pinned stagger-animation" onclick="location.href='{{ url_for('post.detail', post_id=post.id) }}'">
+                <div class="post-header">
+                    <img src="{{ post.author.avatar }}" alt="avatar" class="avatar avatar-sm">
+                    <div class="post-author">
+                        <span class="post-author-name">{{ post.author.username }}</span>
+                        {% if post.is_ai_generated %}
+                        <span class="badge badge-ai">AI</span>
+                        {% endif %}
+                    </div>
+                    <span class="post-time" data-time="{{ post.created_at }}">{{ post.created_at }}</span>
+                </div>
+                <h3 class="post-title">{{ post.title }}</h3>
+                <div class="post-meta">
+                    <span class="post-meta-item">👁️ {{ post.view_count }}</span>
+                    <span class="post-meta-item">💬 {{ post.reply_count }}</span>
+                    <span class="post-meta-item">👍 {{ post.like_count }}</span>
+                    {% if post.board %}
+                    <span class="post-meta-item">📁 {{ post.board.name }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        <!-- 最新帖子 -->
+        <section>
+            <div class="content-header">
+                <h2 class="content-title">📰 最新动态</h2>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('post.create') }}" class="btn btn-premium">
+                    ✏️ 发布帖子
+                </a>
+                {% endif %}
+            </div>
+
+            {% if recent_posts %}
+                {% for post in recent_posts %}
+                <div class="post-card stagger-animation" onclick="location.href='{{ url_for('post.detail', post_id=post.id) }}'">
+                    <div class="post-header">
+                        <img src="{{ post.author.avatar }}" alt="avatar" class="avatar avatar-sm">
+                        <div class="post-author">
+                            <span class="post-author-name">{{ post.author.username }}</span>
+                            {% if post.is_ai_generated %}
+                            <span class="badge badge-ai">AI</span>
+                            {% endif %}
+                        </div>
+                        <span class="post-time" data-time="{{ post.created_at }}">{{ post.created_at }}</span>
+                    </div>
+                    <h3 class="post-title">{{ post.title }}</h3>
+                    <p class="post-preview">{{ post.content|truncate_md(150) }}</p>
+                    <div class="post-meta">
+                        <span class="post-meta-item">👁️ {{ post.view_count }}</span>
+                        <span class="post-meta-item">💬 {{ post.reply_count }}</span>
+                        <span class="post-meta-item">👍 {{ post.like_count }}</span>
+                        {% if post.board %}
+                        <span class="post-meta-item">📁 {{ post.board.name }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state stagger-animation">
+                    <div class="empty-state-icon">📝</div>
+                    <h3 class="empty-state-title">暂无帖子</h3>
+                    <p class="empty-state-desc">这里还没有任何帖子，快来发布第一篇吧！</p>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('post.create') }}" class="btn btn-premium">发布第一篇帖子</a>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-premium">登录后发帖</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+
+<!-- ============================================
+     移动端专属布局 - 完全重写
+     ============================================ -->
+<div class="mobile-home">
+    <!-- 顶部欢迎区域 + 每日箴言 -->
+    <section class="mobile-welcome-section">
+        <div class="mobile-welcome-content">
+            <p class="mobile-greeting">{% if current_user.is_authenticated %}你好，{{ current_user.username }}{% else %}欢迎来到{% endif %}</p>
+            <h1 class="mobile-welcome-title">{{ site_name }}</h1>
+            
+            <!-- 每日箴言卡片 -->
+            <div class="mobile-quote-card">
+                <p class="mobile-quote-text" id="mobile-daily-quote">博学笃志，切问近思 —— 卢湾高级中学</p>
+                <div class="mobile-quote-footer">
+                    <span class="mobile-quote-date">📅 今日箴言</span>
+                    <button class="mobile-quote-refresh" onclick="refreshMobileQuote()">
+                        <span>🔄</span>
+                        <span>换一条</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI功能入口 - 横向滚动 -->
+    {% if ai_chat_enabled or ai_write_enabled or ai_image_enabled %}
+    <section class="mobile-ai-section">
+        <div class="mobile-section-header">
+            <h2 class="mobile-section-title">🤖 AI 助手</h2>
+        </div>
+        <div class="mobile-ai-scroll">
+            {% if ai_chat_enabled %}
+            <a href="{{ url_for('ai.chat') }}" class="mobile-ai-card mobile-ai-card-chat">
+                <span class="mobile-ai-icon">💬</span>
+                <div class="mobile-ai-title">AI 对话</div>
+                <div class="mobile-ai-desc">智能问答</div>
+            </a>
+            {% endif %}
+            {% if ai_write_enabled %}
+            <a href="{{ url_for('ai.write') }}" class="mobile-ai-card mobile-ai-card-write">
+                <span class="mobile-ai-icon">✍️</span>
+                <div class="mobile-ai-title">AI 写稿</div>
+                <div class="mobile-ai-desc">一键生成</div>
+            </a>
+            {% endif %}
+            {% if ai_image_enabled %}
+            <a href="{{ url_for('ai.image') }}" class="mobile-ai-card mobile-ai-card-image">
+                <span class="mobile-ai-icon">🎨</span>
+                <div class="mobile-ai-title">AI 绘图</div>
+                <div class="mobile-ai-desc">文生图片</div>
+            </a>
+            {% endif %}
+            <a href="{{ url_for('novel.index') }}" class="mobile-ai-card mobile-ai-card-novel">
+                <span class="mobile-ai-icon">📚</span>
+                <div class="mobile-ai-title">AI 小说</div>
+                <div class="mobile-ai-desc">互动故事</div>
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- 快速统计 -->
+    <section class="mobile-stats-row">
+        <div class="mobile-stat-card">
+            <div class="mobile-stat-value">{{ boards|length }}</div>
+            <div class="mobile-stat-label">版块</div>
+        </div>
+        <div class="mobile-stat-card">
+            <div class="mobile-stat-value">{{ (pinned_posts|length) + (recent_posts|length) }}</div>
+            <div class="mobile-stat-label">帖子</div>
+        </div>
+        <div class="mobile-stat-card">
+            <div class="mobile-stat-value">{{ recent_posts|sum(attribute='reply_count') if recent_posts else 0 }}</div>
+            <div class="mobile-stat-label">回复</div>
+        </div>
+    </section>
+
+    <!-- 版块导航 - 网格布局 -->
+    <section class="mobile-boards-section">
+        <div class="mobile-section-header">
+            <h2 class="mobile-section-title">📁 版块导航</h2>
+        </div>
+        <div class="mobile-boards-grid">
+            <a href="{{ url_for('main.index') }}" class="mobile-board-card active">
+                <div class="mobile-board-icon">🏠</div>
+                <div class="mobile-board-name">全部帖子</div>
+                <div class="mobile-board-count">浏览全部</div>
+            </a>
+            {% for board in boards %}
+            <a href="{{ url_for('post.board', slug=board.slug) }}" class="mobile-board-card">
+                <div class="mobile-board-icon">{{ board.icon }}</div>
+                <div class="mobile-board-name">{{ board.name }}</div>
+                <div class="mobile-board-count">{{ board.post_count }} 篇</div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- 今日运势 (仅登录用户) -->
+    {% if current_user.is_authenticated %}
+    <section class="mobile-fortune-section">
+        <div class="mobile-section-header">
+            <h2 class="mobile-section-title">🔮 今日运势</h2>
+        </div>
+        <div class="mobile-fortune-card" id="mobile-fortune-card">
+            <div class="mobile-loading">
+                <div class="mobile-loading-spinner"></div>
+                <span>加载中...</span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- 帖子列表 -->
+    <section class="mobile-posts-section">
+        <div class="mobile-posts-header">
+            <h2 class="mobile-section-title">📰 最新动态</h2>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('post.create') }}" class="mobile-create-btn">
+                <span>✏️</span>
+                <span>发帖</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- 置顶帖子 -->
+        {% if pinned_posts %}
+        {% for post in pinned_posts %}
+        <div class="mobile-post-card pinned" onclick="location.href='{{ url_for('post.detail', post_id=post.id) }}'">
+            <div class="mobile-pin-badge">📌 置顶</div>
+            <div class="mobile-post-header">
+                <img src="{{ post.author.avatar }}" alt="avatar" class="mobile-post-avatar">
+                <div class="mobile-post-author-info">
+                    <div class="mobile-post-author">
+                        {{ post.author.username }}
+                        {% if post.is_ai_generated %}
+                        <span class="badge badge-ai">AI</span>
+                        {% endif %}
+                    </div>
+                    <div class="mobile-post-time" data-time="{{ post.created_at }}">{{ post.created_at }}</div>
+                </div>
+            </div>
+            <h3 class="mobile-post-title">{{ post.title }}</h3>
+            <div class="mobile-post-footer">
+                <span class="mobile-post-stat">👁️ {{ post.view_count }}</span>
+                <span class="mobile-post-stat">💬 {{ post.reply_count }}</span>
+                <span class="mobile-post-stat">👍 {{ post.like_count }}</span>
+                {% if post.board %}
+                <span class="mobile-post-board">{{ post.board.name }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- 普通帖子 -->
+        {% if recent_posts %}
+            {% for post in recent_posts %}
+            <div class="mobile-post-card" onclick="location.href='{{ url_for('post.detail', post_id=post.id) }}'">
+                <div class="mobile-post-header">
+                    <img src="{{ post.author.avatar }}" alt="avatar" class="mobile-post-avatar">
+                    <div class="mobile-post-author-info">
+                        <div class="mobile-post-author">
+                            {{ post.author.username }}
+                            {% if post.is_ai_generated %}
+                            <span class="badge badge-ai">AI</span>
+                            {% endif %}
+                        </div>
+                        <div class="mobile-post-time" data-time="{{ post.created_at }}">{{ post.created_at }}</div>
+                    </div>
+                </div>
+                <h3 class="mobile-post-title">{{ post.title }}</h3>
+                <p class="mobile-post-preview">{{ post.content|truncate_md(100) }}</p>
+                <div class="mobile-post-footer">
+                    <span class="mobile-post-stat">👁️ {{ post.view_count }}</span>
+                    <span class="mobile-post-stat">💬 {{ post.reply_count }}</span>
+                    <span class="mobile-post-stat">👍 {{ post.like_count }}</span>
+                    {% if post.board %}
+                    <span class="mobile-post-board">{{ post.board.name }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="mobile-empty-state">
+                <div class="mobile-empty-icon">📝</div>
+                <h3 class="mobile-empty-title">暂无帖子</h3>
+                <p class="mobile-empty-desc">这里还没有任何帖子，快来发布第一篇吧！</p>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('post.create') }}" class="mobile-create-btn" style="display: inline-flex;">
+                    <span>✏️</span>
+                    <span>发布第一篇帖子</span>
+                </a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="mobile-create-btn" style="display: inline-flex;">
+                    <span>🔑</span>
+                    <span>登录后发帖</span>
+                </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// 版块折叠功能
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    section.classList.toggle('collapsed');
+
+    // 保存状态到localStorage
+    const collapsed = section.classList.contains('collapsed');
+    localStorage.setItem(`section-${sectionId}`, collapsed);
+}
+
+// 为所有侧边栏头部添加触摸优化
+document.addEventListener('DOMContentLoaded', function() {
+    const headers = document.querySelectorAll('.sidebar-header');
+    headers.forEach(header => {
+        header.addEventListener('touchstart', function() {}, { passive: true });
+    });
+});
+
+// 每日序言功能
+async function refreshQuote() {
+    const quoteText = document.getElementById('daily-quote');
+    const refreshBtn = document.getElementById('quote-refresh-btn');
+
+    if (!quoteText || !refreshBtn) return;
+
+    refreshBtn.classList.add('loading');
+
+    try {
+        const response = await fetch('/ai/api/daily/quote?refresh=true');
+        const data = await response.json();
+
+        if (data.success && data.quote) {
+            quoteText.style.opacity = '0';
+            setTimeout(() => {
+                quoteText.textContent = data.quote;
+                quoteText.style.opacity = '1';
+            }, 300);
+        }
+    } catch (e) {
+        console.log('Failed to refresh quote');
+    } finally {
+        refreshBtn.classList.remove('loading');
+    }
+}
+
+async function loadDailyQuote() {
+    const quoteText = document.getElementById('daily-quote');
+    if (!quoteText) return;
+
+    try {
+        const response = await fetch('/ai/api/daily/quote');
+        const data = await response.json();
+
+        if (data.success && data.quote) {
+            quoteText.textContent = data.quote;
+        }
+    } catch (e) {
+        console.log('Failed to load quote');
+    }
+}
+
+// 今日运势功能
+async function loadFortune(refresh = false) {
+    const fortuneCard = document.getElementById('fortune-card');
+    if (!fortuneCard) return;
+
+    if (refresh) {
+        fortuneCard.innerHTML = `
+            <div class="fortune-loading">
+                <span class="loading-spinner loading-spinner-sm"></span>
+                <span>重新占卜中...</span>
+            </div>
+        `;
+    }
+
+    try {
+        const url = refresh ? '/ai/api/daily/fortune?refresh=true' : '/ai/api/daily/fortune';
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success) {
+            let levelClass = 'normal';
+            const score = data.luck_score || 70;
+            if (score >= 80) levelClass = 'great';
+            else if (score >= 60) levelClass = 'good';
+
+            fortuneCard.innerHTML = `
+                <div class="fortune-display">
+                    <div class="fortune-emoji">${data.emoji || '🌟'}</div>
+                    <div class="fortune-score-wrapper">
+                        <span class="fortune-score-big">${data.luck_score}</span>
+                        <span class="fortune-level-badge ${levelClass}">${data.luck_level}</span>
+                    </div>
+                    <div class="fortune-message-text">${data.message}</div>
+                    <div class="fortune-lucky-action">
+                        ✨ 今日宜：${data.lucky_action}
+                    </div>
+                    <button class="fortune-refresh-btn" onclick="loadFortune(true)">
+                        🔄 重新占卜
+                    </button>
+                </div>
+            `;
+        } else {
+            fortuneCard.innerHTML = `
+                <div class="fortune-display">
+                    <div class="fortune-emoji">🔮</div>
+                    <div class="fortune-message-text">运势加载失败</div>
+                    <button class="fortune-refresh-btn" onclick="loadFortune(true)">重试</button>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.log('Failed to load fortune');
+        fortuneCard.innerHTML = `
+            <div class="fortune-display">
+                <div class="fortune-emoji">🔮</div>
+                <div class="fortune-message-text">运势加载失败</div>
+                <button class="fortune-refresh-btn" onclick="loadFortune(true)">重试</button>
+            </div>
+        `;
+    }
+}
+
+// 恢复折叠状态并加载每日内容
+document.addEventListener('DOMContentLoaded', function() {
+    // 恢复折叠状态
+    ['boards-section', 'ai-section', 'stats-section', 'fortune-section'].forEach(id => {
+        const section = document.getElementById(id);
+        if (section) {
+            const collapsed = localStorage.getItem(`section-${id}`) === 'true';
+            if (collapsed) {
+                section.classList.add('collapsed');
+            }
+        }
+    });
+
+    // 加载每日序言
+    loadDailyQuote();
+    loadMobileDailyQuote();
+
+    // 加载今日运势
+    loadFortune();
+    loadMobileFortune();
+});
+
+// ============================================
+// 移动端专属功能
+// ============================================
+
+// 移动端每日箴言
+async function loadMobileDailyQuote() {
+    const quoteText = document.getElementById('mobile-daily-quote');
+    if (!quoteText) return;
+
+    try {
+        const response = await fetch('/ai/api/daily/quote');
+        const data = await response.json();
+
+        if (data.success && data.quote) {
+            quoteText.textContent = data.quote;
+        }
+    } catch (e) {
+        console.log('Failed to load mobile quote');
+    }
+}
+
+async function refreshMobileQuote() {
+    const quoteText = document.getElementById('mobile-daily-quote');
+    if (!quoteText) return;
+
+    try {
+        const response = await fetch('/ai/api/daily/quote?refresh=true');
+        const data = await response.json();
+
+        if (data.success && data.quote) {
+            quoteText.style.opacity = '0';
+            setTimeout(() => {
+                quoteText.textContent = data.quote;
+                quoteText.style.opacity = '1';
+            }, 200);
+        }
+    } catch (e) {
+        console.log('Failed to refresh mobile quote');
+    }
+}
+
+// 移动端今日运势
+async function loadMobileFortune(refresh = false) {
+    const fortuneCard = document.getElementById('mobile-fortune-card');
+    if (!fortuneCard) return;
+
+    if (refresh) {
+        fortuneCard.innerHTML = `
+            <div class="mobile-loading">
+                <div class="mobile-loading-spinner"></div>
+                <span>重新占卜中...</span>
+            </div>
+        `;
+    }
+
+    try {
+        const url = refresh ? '/ai/api/daily/fortune?refresh=true' : '/ai/api/daily/fortune';
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success) {
+            let levelClass = 'normal';
+            const score = data.luck_score || 70;
+            if (score >= 80) levelClass = 'great';
+            else if (score >= 60) levelClass = 'good';
+
+            fortuneCard.innerHTML = `
+                <div class="mobile-fortune-emoji">${data.emoji || '🌟'}</div>
+                <div class="mobile-fortune-score-row">
+                    <span class="mobile-fortune-score">${data.luck_score}</span>
+                    <span class="mobile-fortune-level ${levelClass}">${data.luck_level}</span>
+                </div>
+                <p class="mobile-fortune-message">${data.message}</p>
+                <div class="mobile-fortune-lucky">
+                    ✨ 今日宜：${data.lucky_action}
+                </div>
+                <button class="mobile-quote-refresh" style="margin-top: 16px;" onclick="loadMobileFortune(true)">
+                    <span>🔄</span>
+                    <span>重新占卜</span>
+                </button>
+            `;
+        } else {
+            fortuneCard.innerHTML = `
+                <div class="mobile-fortune-emoji">🔮</div>
+                <p class="mobile-fortune-message">运势加载失败</p>
+                <button class="mobile-quote-refresh" onclick="loadMobileFortune(true)">
+                    <span>🔄</span>
+                    <span>重试</span>
+                </button>
+            `;
+        }
+    } catch (e) {
+        console.log('Failed to load mobile fortune');
+        fortuneCard.innerHTML = `
+            <div class="mobile-fortune-emoji">🔮</div>
+            <p class="mobile-fortune-message">运势加载失败</p>
+            <button class="mobile-quote-refresh" onclick="loadMobileFortune(true)">
+                <span>🔄</span>
+                <span>重试</span>
+            </button>
+        `;
+    }
+}
+</script>
+{% endblock %}

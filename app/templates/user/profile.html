@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}个人中心 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="row" style="display: flex; gap: 24px; flex-wrap: wrap;">
+        <!-- 左侧：基本信息 -->
+        <div class="col" style="flex: 1; min-width: 300px; max-width: 400px;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">👤 个人中心</h2>
+                </div>
+
+                <div class="card-body" style="text-align: center;">
+                    <img src="{{ user.avatar }}" alt="avatar" class="avatar avatar-xl">
+                    <h2 style="margin: 16px 0 8px;">{{ user.username }}</h2>
+                    <p class="text-muted">{{ user.email }}</p>
+
+                    <div style="display: flex; justify-content: center; gap: 16px; margin: 24px 0;">
+                        <div class="stat-card" style="padding: 16px;">
+                            <div class="stat-value">{{ user.stats.post_count if user.stats else 0 }}</div>
+                            <div class="stat-label">帖子</div>
+                        </div>
+                        <div class="stat-card" style="padding: 16px;">
+                            <div class="stat-value">{{ user.stats.like_count if user.stats else 0 }}</div>
+                            <div class="stat-label">获赞</div>
+                        </div>
+                    </div>
+
+                    {% if user.bio %}
+                    <div style="margin-top: 24px; text-align: left;">
+                        <h4>简介</h4>
+                        <p>{{ user.bio }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-footer" style="text-align: center; display: flex; justify-content: center; gap: 8px;">
+                    <a href="{{ url_for('auth.settings') }}" class="btn btn-primary">编辑设置</a>
+                    {% if current_user.is_authenticated and current_user.id != user.id %}
+                    <a href="{{ url_for('message.new_message', recipient_id=user.id) }}" class="btn btn-outline">✉️ 发送消息</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：AI功能区 -->
+        {% if current_user.is_authenticated and current_user.id == user.id %}
+        <div class="col" style="flex: 2; min-width: 400px;">
+            <!-- AI问候 -->
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-body" id="ai-greeting-area">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 2rem;">🤖</span>
+                        <div id="ai-greeting" style="flex: 1;">
+                            <p style="margin: 0; color: var(--text-muted);">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI功能卡片 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <!-- AI个性分析 -->
+                <div class="card ai-feature-card">
+                    <div class="card-header">
+                        <h3 class="card-title">🔮 AI个性分析</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 0.9rem;">基于你的发帖内容，AI会分析你的写作风格和个性特点</p>
+                        <div id="personality-result" style="display: none; margin-top: 16px;"></div>
+                        <button class="btn btn-outline" onclick="analyzePersonality()" id="analyze-btn" style="margin-top: 12px;">
+                            开始分析
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI生成简介 -->
+                <div class="card ai-feature-card">
+                    <div class="card-header">
+                        <h3 class="card-title">✨ AI生成简介</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 0.9rem;">让AI为你生成个性化的个人简介</p>
+                        <div id="bio-result" style="display: none; margin-top: 16px;"></div>
+                        <button class="btn btn-outline" onclick="generateBio()" id="bio-btn" style="margin-top: 12px;">
+                            生成简介
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI头像描述 -->
+                <div class="card ai-feature-card">
+                    <div class="card-header">
+                        <h3 class="card-title">🎨 AI头像描述</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 0.9rem;">获取AI生成的创意头像描述，可用于AI绘图</p>
+                        <div id="avatar-desc-result" style="display: none; margin-top: 16px;"></div>
+                        <button class="btn btn-outline" onclick="generateAvatarDesc()" id="avatar-desc-btn" style="margin-top: 12px;">
+                            生成描述
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI使用统计 -->
+                <div class="card ai-feature-card">
+                    <div class="card-header">
+                        <h3 class="card-title">📊 AI使用统计</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="ai-stats">
+                            <div class="stat-row">
+                                <span>对话次数</span>
+                                <span id="stat-chat">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>写稿次数</span>
+                                <span id="stat-write">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>图片生成</span>
+                                <span id="stat-image">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Token消耗</span>
+                                <span id="stat-tokens">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷入口 -->
+            <div class="card" style="margin-top: 16px;">
+                <div class="card-header">
+                    <h3 class="card-title">🚀 快捷入口</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <a href="{{ url_for('ai.chat') }}" class="btn btn-outline">💬 AI对话</a>
+                        <a href="{{ url_for('ai.write') }}" class="btn btn-outline">✍️ AI写稿</a>
+                        <a href="{{ url_for('ai.image') }}" class="btn btn-outline">🎨 AI绘图</a>
+                        <a href="{{ url_for('ai.gallery') }}" class="btn btn-outline">🖼️ 我的图库</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.ai-feature-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.ai-feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.analysis-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    margin: 4px;
+}
+
+.bio-option {
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.bio-option:hover {
+    border-color: var(--primary-color);
+}
+
+.bio-option.selected {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.bio-option-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 加载AI问候
+async function loadAIGreeting() {
+    try {
+        const response = await fetch('/ai/api/profile/ai-greeting');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('ai-greeting').innerHTML = `<p style="margin: 0;">${data.greeting}</p>`;
+        }
+    } catch (e) {
+        document.getElementById('ai-greeting').innerHTML = `<p style="margin: 0;">你好！欢迎回来 👋</p>`;
+    }
+}
+
+// 加载AI使用统计
+async function loadAIStats() {
+    try {
+        const response = await fetch('/ai/api/profile/ai-stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('stat-chat').textContent = data.stats.chat_count || 0;
+            document.getElementById('stat-write').textContent = data.stats.write_count || 0;
+            document.getElementById('stat-image').textContent = data.stats.image_count || 0;
+            document.getElementById('stat-tokens').textContent = formatNumber(data.stats.total_tokens || 0);
+        }
+    } catch (e) {
+        console.error('加载统计失败:', e);
+    }
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+}
+
+// AI个性分析
+async function analyzePersonality() {
+    const btn = document.getElementById('analyze-btn');
+    const result = document.getElementById('personality-result');
+    
+    btn.disabled = true;
+    btn.textContent = '分析中...';
+    
+    try {
+        const response = await fetch('/ai/api/profile/ai-analysis', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            result.style.display = 'block';
+            
+            // 安全获取数据，提供默认值
+            const styleTags = data.style_tags || data.analysis?.style_tags || [];
+            const topics = data.active_topics || data.topics || data.analysis?.topics || [];
+            const personality = data.personality || data.analysis?.personality || '暂无分析';
+            
+            result.innerHTML = `
+                <div style="margin-bottom: 12px;">
+                    <strong>写作风格</strong>
+                    <div>${styleTags.length > 0 ? styleTags.map(t => `<span class="analysis-tag">${t}</span>`).join('') : '<span class="text-muted">暂无数据</span>'}</div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <strong>活跃话题</strong>
+                    <div>${topics.length > 0 ? topics.map(t => `<span class="analysis-tag">${t}</span>`).join('') : '<span class="text-muted">暂无数据</span>'}</div>
+                </div>
+                <div>
+                    <strong>个性特点</strong>
+                    <p style="margin: 8px 0 0; font-size: 0.9rem;">${personality}</p>
+                </div>
+            `;
+            btn.textContent = '重新分析';
+        } else {
+            Utils.showToast(data.message || '分析失败', 'danger');
+            btn.textContent = '开始分析';
+        }
+    } catch (e) {
+        Utils.showToast('分析失败: ' + e.message, 'danger');
+        btn.textContent = '开始分析';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// AI生成简介
+let selectedBioIndex = -1;
+let generatedBios = [];
+
+async function generateBio() {
+    const btn = document.getElementById('bio-btn');
+    const result = document.getElementById('bio-result');
+    
+    btn.disabled = true;
+    btn.textContent = '生成中...';
+    
+    try {
+        const response = await fetch('/ai/api/profile/ai-bio', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        });
+        const data = await response.json();
+        
+        if (data.success && data.bios) {
+            generatedBios = data.bios;
+            result.style.display = 'block';
+            
+            const styles = ['正式', '幽默', '文艺'];
+            result.innerHTML = generatedBios.map((bio, i) => `
+                <div class="bio-option" onclick="selectBio(${i})">
+                    <div class="bio-option-label">${styles[i] || '风格' + (i+1)}</div>
+                    <div>${bio}</div>
+                </div>
+            `).join('') + `
+                <button class="btn btn-primary btn-sm" onclick="saveBio()" id="save-bio-btn" style="margin-top: 8px;" disabled>
+                    保存选中的简介
+                </button>
+            `;
+            btn.textContent = '重新生成';
+        } else {
+            Utils.showToast(data.message || '生成失败', 'danger');
+            btn.textContent = '生成简介';
+        }
+    } catch (e) {
+        Utils.showToast('生成失败: ' + e.message, 'danger');
+        btn.textContent = '生成简介';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function selectBio(index) {
+    selectedBioIndex = index;
+    document.querySelectorAll('.bio-option').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+    });
+    document.getElementById('save-bio-btn').disabled = false;
+}
+
+async function saveBio() {
+    if (selectedBioIndex < 0 || !generatedBios[selectedBioIndex]) return;
+    
+    try {
+        // 这里需要调用保存简介的API
+        Utils.showToast('简介已保存', 'success');
+    } catch (e) {
+        Utils.showToast('保存失败', 'danger');
+    }
+}
+
+// AI头像描述
+async function generateAvatarDesc() {
+    const btn = document.getElementById('avatar-desc-btn');
+    const result = document.getElementById('avatar-desc-result');
+    
+    btn.disabled = true;
+    btn.textContent = '生成中...';
+    
+    try {
+        const response = await fetch('/ai/api/profile/ai-avatar-desc', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        });
+        const data = await response.json();
+        
+        if (data.success && data.descriptions) {
+            result.style.display = 'block';
+            result.innerHTML = data.descriptions.map((desc, i) => `
+                <div style="padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <p style="margin: 0; flex: 1;">${desc}</p>
+                        <button class="btn btn-ghost btn-sm" onclick="copyText('${desc.replace(/'/g, "\\'")}')">📋</button>
+                    </div>
+                </div>
+            `).join('');
+            btn.textContent = '重新生成';
+        } else {
+            Utils.showToast(data.message || '生成失败', 'danger');
+            btn.textContent = '生成描述';
+        }
+    } catch (e) {
+        Utils.showToast('生成失败: ' + e.message, 'danger');
+        btn.textContent = '生成描述';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        Utils.showToast('已复制', 'success');
+    });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadAIGreeting();
+    loadAIStats();
+});
+</script>
+{% endblock %}

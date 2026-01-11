@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}搜索: {{ query }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 40px; padding-bottom: 40px;">
+    <!-- 搜索框 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <form method="GET" action="{{ url_for('main.search') }}" style="display: flex; gap: 12px;">
+            <input type="text" name="q" class="form-control" value="{{ query }}" placeholder="搜索帖子..." required>
+            <button type="submit" class="btn btn-primary">搜索</button>
+        </form>
+    </div>
+
+    <!-- 搜索结果 -->
+    {% if query %}
+    <div>
+        <h3 style="margin-bottom: 16px;">
+            {% if results %}
+            搜索结果 (共 {{ total }} 条)
+            {% else %}
+            未找到相关结果
+            {% endif %}
+        </h3>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            {% for post in results %}
+            <div class="card post-card">
+                <div class="post-header">
+                    <img src="{{ post.author.avatar }}" alt="avatar" class="avatar avatar-sm">
+                    <div class="post-author">
+                        <span class="post-author-name">{{ post.author.username }}</span>
+                    </div>
+                    <span class="post-time" data-time="{{ post.created_at }}">{{ post.created_at }}</span>
+                </div>
+
+                <a href="{{ url_for('post.detail', post_id=post.id) }}" style="text-decoration: none;">
+                    <h4 class="post-title">{{ post.title }}</h4>
+                </a>
+
+                <p class="post-content">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
+
+                <div class="post-meta">
+                    <span class="post-meta-item">👁️ {{ post.view_count }}</span>
+                    <span class="post-meta-item">💬 {{ post.reply_count }}</span>
+                    <span class="post-meta-item">👍 {{ post.like_count }}</span>
+                    {% if post.board %}
+                    <span class="post-meta-item">📁 {{ post.board.name }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not query %}
+    <div class="card" style="text-align: center; padding: 60px 40px;">
+        <div style="font-size: 64px; margin-bottom: 16px;">🔍</div>
+        <h3 style="margin-bottom: 8px;">搜索帖子</h3>
+        <p class="text-muted">输入关键词搜索相关内容</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

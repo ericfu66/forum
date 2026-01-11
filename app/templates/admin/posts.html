@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}内容管理 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>内容管理</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+    </div>
+
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color);">
+                    <th style="padding: 12px; text-align: left;">标题</th>
+                    <th style="padding: 12px; text-align: left;">作者</th>
+                    <th style="padding: 12px; text-align: left;">版块</th>
+                    <th style="padding: 12px; text-align: left;">状态</th>
+                    <th style="padding: 12px; text-align: left;">发布时间</th>
+                    <th style="padding: 12px; text-align: center;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 12px;">
+                        <a href="{{ url_for('post.detail', post_id=post.id) }}" style="color: var(--primary-color); text-decoration: none;">
+                            {{ post.title }}
+                        </a>
+                        {% if post.is_pinned %}
+                        <span class="badge badge-primary">置顶</span>
+                        {% endif %}
+                        {% if post.is_ai_generated %}
+                        <span class="badge badge-ai">AI</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 12px;">{{ post.author.username if post.author else '-' }}</td>
+                    <td style="padding: 12px;">{{ post.board.name if post.board else '-' }}</td>
+                    <td style="padding: 12px;">
+                        <span class="badge badge-{{ 'success' if post.status == 'published' else 'secondary' }}">
+                            {{ '已发布' if post.status == 'published' else '已删除' }}
+                        </span>
+                    </td>
+                    <td style="padding: 12px; color: var(--text-muted);">{{ post.created_at[:10] }}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="togglePin({{ post.id }}, {{ 'false' if post.is_pinned else 'true' }})"
+                                class="btn btn-ghost btn-sm">
+                            {{ '取消置顶' if post.is_pinned else '置顶' }}
+                        </button>
+                        {% if post.status == 'published' %}
+                        <button onclick="deletePost({{ post.id }})" class="btn btn-ghost btn-sm" style="color: #F44336;">删除</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 分页 -->
+        {% if total > 30 %}
+        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+            {% if page > 1 %}
+            <a href="{{ url_for('admin.posts', page=page-1) }}" class="btn btn-outline btn-sm">上一页</a>
+            {% endif %}
+            <span class="btn btn-ghost btn-sm" style="cursor: default;">第 {{ page }} 页</span>
+            {% if (page * 30) < total %}
+            <a href="{{ url_for('admin.posts', page=page+1) }}" class="btn btn-outline btn-sm">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function togglePin(postId, isPinned) {
+    fetch(`/admin/posts/${postId}/pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_pinned: isPinned })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        }
+    });
+}
+
+function deletePost(postId) {
+    if (!confirm('确定要删除此帖子吗？')) return;
+    fetch(`/admin/posts/${postId}/delete`, { method: 'POST' })
+        .then(r => r.json()).then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,1128 @@
+{% extends "base.html" %}
+
+{% block title %}配置管理 - {{ site_name }}{% endblock %}
+
+{% block content %}
+
+{# 配置字段渲染宏 - 必须在使用前定义 #}
+{% macro render_config_field(field_key, field, category_key) %}
+<div class="config-field" data-key="{{ field_key }}" data-category="{{ category_key }}" 
+     style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 8px; border-radius: 6px;">
+    <label style="flex: 0 0 200px; font-family: monospace; color: var(--text-muted); font-size: 0.9rem;">
+        {{ field.label }}
+        {% if field.required %}<span style="color: var(--danger-color);">*</span>{% endif %}
+    </label>
+    
+    {% if field.type == 'boolean' %}
+    <label class="toggle-switch" style="flex: 0 0 auto;">
+        <input type="checkbox" 
+               data-key="{{ field_key }}" 
+               data-category="{{ category_key }}"
+               data-original="{{ 'true' if field.value else 'false' }}"
+               {{ 'checked' if field.value else '' }}
+               onchange="markFieldModified(this)">
+        <span class="toggle-slider"></span>
+    </label>
+    
+    {% elif field.type == 'select' %}
+    <select class="form-control" style="flex: 1; max-width: 300px;"
+            data-key="{{ field_key }}"
+            data-category="{{ category_key }}"
+            data-original="{{ field.value }}"
+            onchange="markFieldModified(this)">
+        {% for option in field.options %}
+        <option value="{{ option.value }}" {{ 'selected' if field.value == option.value else '' }}>
+            {{ option.label }}
+        </option>
+        {% endfor %}
+    </select>
+    
+    {% elif field.type == 'password' %}
+    <input type="password" class="form-control" style="flex: 1; max-width: 400px;"
+           value="{{ '********' if field.value else '' }}"
+           data-key="{{ field_key }}"
+           data-category="{{ category_key }}"
+           data-original="{{ field.value }}"
+           data-is-password="true"
+           onchange="markFieldModified(this)"
+           placeholder="输入新值或留空保持不变">
+    
+    {% elif field.type == 'number' %}
+    <input type="number" class="form-control" style="flex: 1; max-width: 200px;"
+           value="{{ field.value }}"
+           data-key="{{ field_key }}"
+           data-category="{{ category_key }}"
+           data-original="{{ field.value }}"
+           {% if field.min is defined %}min="{{ field.min }}"{% endif %}
+           {% if field.max is defined %}max="{{ field.max }}"{% endif %}
+           {% if field.step is defined %}step="{{ field.step }}"{% endif %}
+           onchange="markFieldModified(this)">
+    {% if field.min is defined or field.max is defined %}
+    <span style="font-size: 0.8rem; color: var(--text-muted);">
+        {% if field.min is defined %}最小: {{ field.min }}{% endif %}
+        {% if field.max is defined %} 最大: {{ field.max }}{% endif %}
+    </span>
+    {% endif %}
+    
+    {% else %}
+    <input type="text" class="form-control" style="flex: 1;"
+           value="{{ field.value }}"
+           data-key="{{ field_key }}"
+           data-category="{{ category_key }}"
+           data-original="{{ field.value }}"
+           onchange="markFieldModified(this)">
+    {% endif %}
+    
+    <span class="modified-indicator" style="display: none; color: var(--warning-color); font-size: 0.8rem;">已修改</span>
+</div>
+{% endmacro %}
+
+{# 模块配置字段渲染宏 #}
+{% macro render_module_field(field_key, field, module_key) %}
+<div class="config-field module-field" data-key="{{ field_key }}" data-module="{{ module_key }}" 
+     style="display: flex; align-items: {% if field.type == 'textarea' %}flex-start{% else %}center{% endif %}; gap: 12px; margin-bottom: 12px; padding: 8px; border-radius: 6px;">
+    <label style="flex: 0 0 180px; font-family: monospace; color: var(--text-muted); font-size: 0.85rem; {% if field.type == 'textarea' %}padding-top: 8px;{% endif %}">
+        {{ field.label }}
+    </label>
+    
+    {% if field.type == 'boolean' %}
+    <label class="toggle-switch" style="flex: 0 0 auto;">
+        <input type="checkbox" 
+               data-key="{{ field_key }}" 
+               data-module="{{ module_key }}"
+               data-original="{{ 'true' if field.value else 'false' }}"
+               {{ 'checked' if field.value else '' }}
+               onchange="markModuleFieldModified(this)">
+        <span class="toggle-slider"></span>
+    </label>
+    
+    {% elif field.type == 'select' %}
+    <select class="form-control" style="flex: 1; max-width: 250px;"
+            data-key="{{ field_key }}"
+            data-module="{{ module_key }}"
+            data-original="{{ field.value }}"
+            onchange="markModuleFieldModified(this)">
+        {% for option in field.options %}
+        <option value="{{ option.value }}" {{ 'selected' if field.value == option.value else '' }}>
+            {{ option.label }}
+        </option>
+        {% endfor %}
+    </select>
+    
+    {% elif field.type == 'password' %}
+    <input type="password" class="form-control" style="flex: 1; max-width: 350px;"
+           value="{{ '********' if field.value else '' }}"
+           data-key="{{ field_key }}"
+           data-module="{{ module_key }}"
+           data-original="{{ field.value }}"
+           data-is-password="true"
+           onchange="markModuleFieldModified(this)"
+           placeholder="输入新值或留空保持不变">
+    
+    {% elif field.type == 'number' %}
+    <input type="number" class="form-control" style="flex: 1; max-width: 150px;"
+           value="{{ field.value }}"
+           data-key="{{ field_key }}"
+           data-module="{{ module_key }}"
+           data-original="{{ field.value }}"
+           {% if field.min is defined %}min="{{ field.min }}"{% endif %}
+           {% if field.max is defined %}max="{{ field.max }}"{% endif %}
+           {% if field.step is defined %}step="{{ field.step }}"{% endif %}
+           onchange="markModuleFieldModified(this)">
+    
+    {% elif field.type == 'textarea' %}
+    <textarea class="form-control" style="flex: 1; min-height: 80px; font-family: monospace; font-size: 0.85rem;"
+              data-key="{{ field_key }}"
+              data-module="{{ module_key }}"
+              data-original="{{ field.value }}"
+              onchange="markModuleFieldModified(this)"
+              placeholder="{{ field.placeholder if field.placeholder else '' }}">{{ field.value }}</textarea>
+    
+    {% else %}
+    <input type="text" class="form-control" style="flex: 1;"
+           value="{{ field.value }}"
+           data-key="{{ field_key }}"
+           data-module="{{ module_key }}"
+           data-original="{{ field.value }}"
+           onchange="markModuleFieldModified(this)">
+    {% endif %}
+    
+    <span class="modified-indicator" style="display: none; color: var(--warning-color); font-size: 0.8rem;">已修改</span>
+</div>
+{% endmacro %}
+
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>⚙️ 配置管理</h1>
+        <div style="display: flex; gap: 12px;">
+            <button id="save-all-btn" onclick="saveAllConfigs()" class="btn btn-primary" disabled>
+                💾 一键保存 (<span id="changes-count">0</span>)
+            </button>
+            <button id="reset-btn" onclick="resetAllChanges()" class="btn btn-ghost" disabled>
+                ↩️ 重置
+            </button>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+        </div>
+    </div>
+
+    <!-- 修改提示 -->
+    <div id="changes-banner" class="card" style="display: none; margin-bottom: 16px; background: var(--warning-color); color: white; padding: 12px 16px;">
+        <span>⚠️ 您有未保存的更改</span>
+    </div>
+
+    <!-- 配置分类 -->
+    <div id="config-sections">
+        <!-- 猫娘设置 -->
+        <div class="card config-section" style="margin-bottom: 16px;">
+            <div class="section-header" onclick="toggleSection('cat-girl')" 
+                 style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 4px 0;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span>🐱</span>
+                    <span>AI猫娘设置</span>
+                </h3>
+                <span class="collapse-icon" id="icon-cat-girl">▼</span>
+            </div>
+            
+            <div class="section-content" id="content-cat-girl" style="margin-top: 16px;">
+                <div class="config-field" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 8px; border-radius: 6px;">
+                    <label style="flex: 0 0 200px; font-family: monospace; color: var(--text-muted); font-size: 0.9rem;">
+                        猫娘名字
+                    </label>
+                    <input type="text" id="cat-girl-name" class="form-control" style="flex: 1; max-width: 200px;"
+                           placeholder="猫娘名字" maxlength="20">
+                    <button onclick="updateCatGirlName()" class="btn btn-outline btn-sm">更新名字</button>
+                    <span id="cat-girl-name-status" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+                </div>
+            </div>
+        </div>
+
+        {% for category_key, category in configs.items() %}
+        {% if category_key == 'ai_global' %}
+        <!-- AI全局配置 - 带测试连接功能 -->
+        <div class="card config-section" style="margin-bottom: 16px;" data-category="{{ category_key }}">
+            <div class="section-header" onclick="toggleSection('{{ category_key }}')" 
+                 style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 4px 0;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span>{{ category.icon }}</span>
+                    <span>{{ category.title }}</span>
+                    <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ category.fields|length }}</span>
+                </h3>
+                <span class="collapse-icon" id="icon-{{ category_key }}">▼</span>
+            </div>
+            
+            <div class="section-content" id="content-{{ category_key }}" style="margin-top: 16px;">
+                {% for field_key, field in category.fields.items() %}
+                {{ render_config_field(field_key, field, category_key) }}
+                {% endfor %}
+                
+                <!-- API测试连接按钮 -->
+                <div style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button onclick="testAIConnection('global')" class="btn btn-outline" id="test-global-btn">
+                            🔌 测试连接
+                        </button>
+                        <span id="test-global-status" style="font-size: 0.9rem;"></span>
+                    </div>
+                    <div id="test-global-result" style="display: none; margin-top: 12px; padding: 12px; border-radius: 6px; font-size: 0.85rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% elif category_key == 'ai_modules' %}
+        <!-- AI模块配置 - 可折叠的子模块 -->
+        <div class="card config-section" style="margin-bottom: 16px;" data-category="{{ category_key }}">
+            <div class="section-header" onclick="toggleSection('{{ category_key }}')" 
+                 style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 4px 0;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span>{{ category.icon }}</span>
+                    <span>{{ category.title }}</span>
+                </h3>
+                <span class="collapse-icon" id="icon-{{ category_key }}">▼</span>
+            </div>
+            
+            <div class="section-content" id="content-{{ category_key }}" style="margin-top: 16px;">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+                    💡 各模块可独立配置API，或使用全局配置。图片生成和视觉理解模块默认使用独立配置。
+                </p>
+                
+                {% for module_key, module in category.modules.items() %}
+                <div class="module-config" style="margin-bottom: 16px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                    <div class="module-header" onclick="toggleModule('{{ module_key }}')"
+                         style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-secondary); cursor: pointer;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>{{ module.icon }}</span>
+                            <span style="font-weight: 500;">{{ module.title }}</span>
+                            <span id="module-status-{{ module_key }}" class="badge" style="font-size: 0.7rem;"></span>
+                        </div>
+                        <span class="collapse-icon" id="icon-module-{{ module_key }}">▶</span>
+                    </div>
+                    
+                    <div class="module-content collapsed" id="content-module-{{ module_key }}" style="padding: 16px;">
+                        {% for field_key, field in module.fields.items() %}
+                        {{ render_module_field(field_key, field, module_key) }}
+                        {% endfor %}
+                        
+                        <!-- 模块测试按钮 (仅对非use_global的模块显示) -->
+                        {% if module_key in ['image', 'vision'] %}
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <button onclick="testModuleConnection('{{ module_key }}')" class="btn btn-outline btn-sm" id="test-{{ module_key }}-btn">
+                                    🔌 测试{{ module.title }}API
+                                </button>
+                                <span id="test-{{ module_key }}-status" style="font-size: 0.85rem;"></span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- 其他配置分类 -->
+        <div class="card config-section" style="margin-bottom: 16px;" data-category="{{ category_key }}">
+            <div class="section-header" onclick="toggleSection('{{ category_key }}')" 
+                 style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 4px 0;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span>{{ category.icon }}</span>
+                    <span>{{ category.title }}</span>
+                    <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ category.fields|length }}</span>
+                </h3>
+                <span class="collapse-icon" id="icon-{{ category_key }}">▼</span>
+            </div>
+            
+            <div class="section-content" id="content-{{ category_key }}" style="margin-top: 16px;">
+                {% for field_key, field in category.fields.items() %}
+                {{ render_config_field(field_key, field, category_key) }}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- 配置历史 -->
+    <div class="card" style="margin-top: 24px;">
+        <h3 class="card-title">📜 配置变更历史</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color);">
+                    <th style="padding: 12px; text-align: left;">时间</th>
+                    <th style="padding: 12px; text-align: left;">分类</th>
+                    <th style="padding: 12px; text-align: left;">变更内容</th>
+                    <th style="padding: 12px; text-align: left;">操作人</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in history %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 12px; color: var(--text-muted);">{{ item.updated_at[:19] if item.updated_at else '-' }}</td>
+                    <td style="padding: 12px;">
+                        <span class="badge badge-primary">{{ item.category }}</span>
+                    </td>
+                    <td style="padding: 12px; font-family: monospace; font-size: 0.85rem;">
+                        {% for key, value in item.changes.items() %}
+                        {{ key }} = {{ value[:30] }}{{ '...' if value|length > 30 else '' }}<br>
+                        {% endfor %}
+                    </td>
+                    <td style="padding: 12px;">{{ item.updated_by or '-' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not history %}
+                <tr>
+                    <td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">暂无变更记录</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<style>
+/* 开关样式 */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-tertiary);
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* 修改指示器 */
+.config-field.modified {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid var(--warning-color);
+}
+
+.config-field.modified .modified-indicator {
+    display: inline !important;
+}
+
+/* 折叠动画 */
+.section-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.section-content.collapsed {
+    max-height: 0 !important;
+    margin-top: 0 !important;
+}
+
+.module-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.module-content.collapsed {
+    max-height: 0 !important;
+    padding: 0 16px !important;
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+}
+
+.collapse-icon.rotated {
+    transform: rotate(-90deg);
+}
+
+/* 测试结果样式 */
+.test-result-success {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.test-result-error {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+}
+
+/* 模块状态徽章 */
+.badge-configured {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-global {
+    background: var(--primary-color);
+    color: white;
+}
+
+.badge-unconfigured {
+    background: var(--text-muted);
+    color: white;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .container {
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    
+    /* 页面标题区域 */
+    .container > div:first-child {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch !important;
+    }
+    
+    .container > div:first-child h1 {
+        font-size: 1.3rem;
+        text-align: center;
+    }
+    
+    .container > div:first-child > div {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .container > div:first-child > div .btn {
+        flex: 1;
+        min-width: 100px;
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+    
+    /* 配置卡片 */
+    .card {
+        padding: 12px !important;
+    }
+    
+    .section-header h3 {
+        font-size: 0.95rem;
+    }
+    
+    .section-header h3 span:nth-child(2) {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* 配置字段 - 改为垂直布局 */
+    .config-field {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        padding: 12px !important;
+    }
+    
+    .config-field label {
+        flex: none !important;
+        width: 100% !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .config-field input,
+    .config-field select {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .config-field .toggle-switch {
+        align-self: flex-start;
+    }
+    
+    .config-field .modified-indicator {
+        align-self: flex-end;
+        margin-top: -20px;
+    }
+    
+    /* 模块配置 */
+    .module-header {
+        padding: 10px 12px !important;
+    }
+    
+    .module-header > div {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .module-content {
+        padding: 12px !important;
+    }
+    
+    .module-field {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+    
+    .module-field label {
+        flex: none !important;
+        width: 100% !important;
+    }
+    
+    .module-field input,
+    .module-field select {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* 测试连接区域 */
+    .config-section [style*="display: flex"][style*="align-items: center"][style*="gap: 12px"] {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
+    .config-section .btn-outline {
+        width: 100%;
+    }
+    
+    /* 配置历史表格 - 改为卡片式布局 */
+    .card table {
+        display: block;
+    }
+    
+    .card table thead {
+        display: none;
+    }
+    
+    .card table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .card table tbody tr {
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        border: none !important;
+    }
+    
+    .card table tbody tr td {
+        padding: 4px 0 !important;
+        border: none !important;
+    }
+    
+    .card table tbody tr td:first-child::before {
+        content: "时间: ";
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    
+    .card table tbody tr td:nth-child(2)::before {
+        content: "分类: ";
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    
+    .card table tbody tr td:nth-child(3)::before {
+        content: "变更: ";
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    
+    .card table tbody tr td:nth-child(4)::before {
+        content: "操作人: ";
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    
+    /* 修改提示横幅 */
+    #changes-banner {
+        padding: 10px 12px !important;
+        font-size: 0.9rem;
+    }
+    
+    /* 猫娘设置特殊处理 */
+    #content-cat-girl .config-field {
+        flex-wrap: wrap;
+    }
+    
+    #content-cat-girl .config-field .btn {
+        width: 100%;
+        margin-top: 4px;
+    }
+}
+
+/* 超小屏幕适配 */
+@media (max-width: 380px) {
+    .container > div:first-child > div .btn {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+    
+    .section-header h3 {
+        font-size: 0.9rem;
+    }
+    
+    .config-field label {
+        font-size: 0.8rem !important;
+    }
+}
+</style>
+
+<script>
+// 批量保存管理器
+const BatchSaveManager = {
+    modifiedFields: new Map(),
+    modifiedModuleFields: new Map(),
+    
+    markModified(element) {
+        const key = element.dataset.key;
+        const category = element.dataset.category;
+        const original = element.dataset.original;
+        const isPassword = element.dataset.isPassword === 'true';
+        
+        let currentValue;
+        if (element.type === 'checkbox') {
+            currentValue = element.checked ? 'true' : 'false';
+        } else {
+            currentValue = element.value;
+        }
+        
+        // 密码字段特殊处理：如果是占位符则不算修改
+        if (isPassword && currentValue === '********') {
+            this.clearModified(key);
+            return;
+        }
+        
+        const fieldId = `${category}.${key}`;
+        const fieldEl = element.closest('.config-field');
+        
+        if (currentValue !== original) {
+            this.modifiedFields.set(fieldId, {
+                category,
+                key,
+                value: element.type === 'checkbox' ? element.checked : currentValue,
+                element
+            });
+            fieldEl.classList.add('modified');
+        } else {
+            this.modifiedFields.delete(fieldId);
+            fieldEl.classList.remove('modified');
+        }
+        
+        this.updateUI();
+    },
+    
+    markModuleModified(element) {
+        const key = element.dataset.key;
+        const module = element.dataset.module;
+        const original = element.dataset.original;
+        const isPassword = element.dataset.isPassword === 'true';
+        
+        let currentValue;
+        if (element.type === 'checkbox') {
+            currentValue = element.checked ? 'true' : 'false';
+        } else {
+            currentValue = element.value;
+        }
+        
+        if (isPassword && currentValue === '********') {
+            this.clearModuleModified(module, key);
+            return;
+        }
+        
+        const fieldId = `ai_modules.${module}.${key}`;
+        const fieldEl = element.closest('.config-field');
+        
+        if (currentValue !== original) {
+            this.modifiedModuleFields.set(fieldId, {
+                module,
+                key,
+                value: element.type === 'checkbox' ? element.checked : currentValue,
+                element
+            });
+            fieldEl.classList.add('modified');
+        } else {
+            this.modifiedModuleFields.delete(fieldId);
+            fieldEl.classList.remove('modified');
+        }
+        
+        this.updateUI();
+    },
+    
+    clearModified(key) {
+        for (const [fieldId, data] of this.modifiedFields) {
+            if (data.key === key) {
+                this.modifiedFields.delete(fieldId);
+                data.element.closest('.config-field').classList.remove('modified');
+            }
+        }
+        this.updateUI();
+    },
+    
+    clearModuleModified(module, key) {
+        const fieldId = `ai_modules.${module}.${key}`;
+        if (this.modifiedModuleFields.has(fieldId)) {
+            const data = this.modifiedModuleFields.get(fieldId);
+            data.element.closest('.config-field').classList.remove('modified');
+            this.modifiedModuleFields.delete(fieldId);
+        }
+        this.updateUI();
+    },
+    
+    hasChanges() {
+        return this.modifiedFields.size > 0 || this.modifiedModuleFields.size > 0;
+    },
+    
+    getTotalChanges() {
+        return this.modifiedFields.size + this.modifiedModuleFields.size;
+    },
+    
+    getChanges() {
+        const changes = {};
+        
+        // 普通配置
+        for (const [fieldId, data] of this.modifiedFields) {
+            if (!changes[data.category]) {
+                changes[data.category] = {};
+            }
+            changes[data.category][data.key] = data.value;
+        }
+        
+        // 模块配置 - 需要特殊处理
+        const moduleChanges = {};
+        for (const [fieldId, data] of this.modifiedModuleFields) {
+            if (!moduleChanges[data.module]) {
+                moduleChanges[data.module] = {};
+            }
+            moduleChanges[data.module][data.key] = data.value;
+        }
+        
+        if (Object.keys(moduleChanges).length > 0) {
+            changes['ai_modules'] = moduleChanges;
+        }
+        
+        return changes;
+    },
+    
+    reset() {
+        for (const [fieldId, data] of this.modifiedFields) {
+            const el = data.element;
+            if (el.type === 'checkbox') {
+                el.checked = el.dataset.original === 'true';
+            } else {
+                el.value = el.dataset.original;
+            }
+            el.closest('.config-field').classList.remove('modified');
+        }
+        
+        for (const [fieldId, data] of this.modifiedModuleFields) {
+            const el = data.element;
+            if (el.type === 'checkbox') {
+                el.checked = el.dataset.original === 'true';
+            } else {
+                el.value = el.dataset.original;
+            }
+            el.closest('.config-field').classList.remove('modified');
+        }
+        
+        this.modifiedFields.clear();
+        this.modifiedModuleFields.clear();
+        this.updateUI();
+    },
+    
+    updateUI() {
+        const count = this.getTotalChanges();
+        const saveBtn = document.getElementById('save-all-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const countEl = document.getElementById('changes-count');
+        const banner = document.getElementById('changes-banner');
+        
+        countEl.textContent = count;
+        saveBtn.disabled = count === 0;
+        resetBtn.disabled = count === 0;
+        banner.style.display = count > 0 ? 'block' : 'none';
+    },
+    
+    clearAll() {
+        document.querySelectorAll('.config-field.modified').forEach(el => {
+            el.classList.remove('modified');
+        });
+        this.modifiedFields.clear();
+        this.modifiedModuleFields.clear();
+        this.updateUI();
+    }
+};
+
+// 标记字段已修改
+function markFieldModified(element) {
+    BatchSaveManager.markModified(element);
+}
+
+// 标记模块字段已修改
+function markModuleFieldModified(element) {
+    BatchSaveManager.markModuleModified(element);
+}
+
+// 保存所有配置
+function saveAllConfigs() {
+    if (!BatchSaveManager.hasChanges()) {
+        alert('没有需要保存的更改');
+        return;
+    }
+    
+    const changes = BatchSaveManager.getChanges();
+    
+    if (!confirm(`确定要保存 ${BatchSaveManager.getTotalChanges()} 项配置更改吗？`)) {
+        return;
+    }
+    
+    fetch('/admin/api/config/batch-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: changes })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            BatchSaveManager.clearAll();
+            location.reload();
+        } else {
+            let errorMsg = '保存失败:\n';
+            if (data.errors && data.errors.length > 0) {
+                data.errors.forEach(err => {
+                    errorMsg += `- ${err.field}: ${err.message}\n`;
+                });
+            } else {
+                errorMsg += data.message;
+            }
+            alert(errorMsg);
+        }
+    })
+    .catch(err => {
+        alert('保存失败: ' + err);
+    });
+}
+
+// 重置所有更改
+function resetAllChanges() {
+    if (!BatchSaveManager.hasChanges()) return;
+    
+    if (confirm('确定要放弃所有未保存的更改吗？')) {
+        BatchSaveManager.reset();
+    }
+}
+
+// 折叠/展开配置区域
+function toggleSection(categoryKey) {
+    const content = document.getElementById(`content-${categoryKey}`);
+    const icon = document.getElementById(`icon-${categoryKey}`);
+    
+    content.classList.toggle('collapsed');
+    icon.classList.toggle('rotated');
+}
+
+// 折叠/展开模块
+function toggleModule(moduleKey) {
+    const content = document.getElementById(`content-module-${moduleKey}`);
+    const icon = document.getElementById(`icon-module-${moduleKey}`);
+    
+    content.classList.toggle('collapsed');
+    icon.classList.toggle('rotated');
+}
+
+// 测试AI连接
+function testAIConnection(type) {
+    const btn = document.getElementById(`test-${type}-btn`);
+    const status = document.getElementById(`test-${type}-status`);
+    const result = document.getElementById(`test-${type}-result`);
+    
+    // 获取当前配置值
+    let config = {};
+    if (type === 'global') {
+        const section = document.querySelector('[data-category="ai_global"]');
+        // 查找input/select元素，而不是外层div
+        const apiBaseInput = section.querySelector('input[data-key="api_base"], select[data-key="api_base"]');
+        const apiKeyInput = section.querySelector('input[data-key="api_key"]');
+        const modelInput = section.querySelector('input[data-key="model"], select[data-key="model"]');
+        
+        config.api_base = apiBaseInput?.value || '';
+        config.api_key = apiKeyInput?.value || '';
+        config.model = modelInput?.value || '';
+        
+        // 如果是密码占位符，使用原始值
+        if (apiKeyInput && apiKeyInput.value === '********') {
+            config.api_key = apiKeyInput.dataset.original;
+        }
+    }
+    
+    btn.disabled = true;
+    btn.textContent = '⏳ 测试中...';
+    status.textContent = '';
+    result.style.display = 'none';
+    
+    fetch('/admin/api/ai/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = '🔌 测试连接';
+        
+        if (data.success) {
+            status.innerHTML = '<span style="color: var(--success-color);">✓ 连接成功</span>';
+            result.className = 'test-result-success';
+            result.innerHTML = `
+                <div><strong>模型:</strong> ${data.model_info?.model || config.model}</div>
+                <div><strong>响应时间:</strong> ${data.response_time}ms</div>
+            `;
+        } else {
+            status.innerHTML = '<span style="color: var(--danger-color);">✗ 连接失败</span>';
+            result.className = 'test-result-error';
+            result.innerHTML = `<div>${data.message}</div>`;
+        }
+        result.style.display = 'block';
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.textContent = '🔌 测试连接';
+        status.innerHTML = '<span style="color: var(--danger-color);">✗ 请求失败</span>';
+        result.className = 'test-result-error';
+        result.innerHTML = `<div>${err.message}</div>`;
+        result.style.display = 'block';
+    });
+}
+
+// 测试模块连接
+function testModuleConnection(moduleKey) {
+    const btn = document.getElementById(`test-${moduleKey}-btn`);
+    const status = document.getElementById(`test-${moduleKey}-status`);
+    
+    // 获取模块配置 - 查找input/select元素
+    const moduleContent = document.getElementById(`content-module-${moduleKey}`);
+    const apiBaseInput = moduleContent.querySelector(`input[data-key="api_base"], select[data-key="api_base"]`);
+    const apiKeyInput = moduleContent.querySelector(`input[data-key="api_key"]`);
+    const modelInput = moduleContent.querySelector(`input[data-key="model"], select[data-key="model"]`);
+    
+    const config = {
+        api_base: apiBaseInput?.value || '',
+        api_key: apiKeyInput?.value || '',
+        model: modelInput?.value || ''
+    };
+    
+    // 处理密码占位符
+    if (apiKeyInput && apiKeyInput.value === '********') {
+        config.api_key = apiKeyInput.dataset.original;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '⏳ 测试中...';
+    status.textContent = '';
+    
+    // 根据模块类型选择测试接口
+    const endpoint = moduleKey === 'image' ? '/admin/api/ai/test-image-api' : '/admin/api/ai/test-connection';
+    
+    fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = `🔌 测试${moduleKey === 'image' ? '图片生成' : '视觉理解'}API`;
+        
+        if (data.success) {
+            status.innerHTML = `<span style="color: var(--success-color);">✓ ${data.message} (${data.response_time}ms)</span>`;
+        } else {
+            status.innerHTML = `<span style="color: var(--danger-color);">✗ ${data.message}</span>`;
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = `🔌 测试${moduleKey === 'image' ? '图片生成' : '视觉理解'}API`;
+        status.innerHTML = `<span style="color: var(--danger-color);">✗ 请求失败</span>`;
+    });
+}
+
+// 加载模块状态
+function loadModuleStatus() {
+    fetch('/admin/api/ai/module-status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                for (const [module, status] of Object.entries(data.modules)) {
+                    const badge = document.getElementById(`module-status-${module}`);
+                    if (badge) {
+                        if (status.use_global) {
+                            badge.textContent = '使用全局';
+                            badge.className = 'badge badge-global';
+                        } else if (status.configured) {
+                            badge.textContent = '已配置';
+                            badge.className = 'badge badge-configured';
+                        } else {
+                            badge.textContent = '未配置';
+                            badge.className = 'badge badge-unconfigured';
+                        }
+                    }
+                }
+            }
+        });
+}
+
+// 页面离开提示
+window.addEventListener('beforeunload', function(e) {
+    if (BatchSaveManager.hasChanges()) {
+        e.preventDefault();
+        e.returnValue = '您有未保存的更改，确定要离开吗？';
+        return e.returnValue;
+    }
+});
+
+// 加载猫娘信息
+function loadCatGirlInfo() {
+    fetch('/admin/api/cat-girl/info')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('cat-girl-name').value = data.cat_girl.username;
+                document.getElementById('cat-girl-name').placeholder = data.cat_girl.username;
+            }
+        });
+}
+
+// 更新猫娘名字
+function updateCatGirlName() {
+    const name = document.getElementById('cat-girl-name').value.trim();
+    const status = document.getElementById('cat-girl-name-status');
+    
+    if (!name) {
+        status.textContent = '名字不能为空';
+        status.style.color = 'var(--danger-color)';
+        return;
+    }
+    
+    fetch('/admin/api/cat-girl/name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = '✓ 更新成功';
+            status.style.color = 'var(--success-color)';
+        } else {
+            status.textContent = data.message;
+            status.style.color = 'var(--danger-color)';
+        }
+    })
+    .catch(() => {
+        status.textContent = '更新失败';
+        status.style.color = 'var(--danger-color)';
+    });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadCatGirlInfo();
+    loadModuleStatus();
+});
+</script>
+{% endblock %}

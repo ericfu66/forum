@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}发送消息 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="new-message-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <a href="{{ url_for('message.inbox') }}" class="back-btn">←</a>
+        <h1>✉️ 发送消息</h1>
+    </div>
+
+    <div class="card message-form-card">
+        <form id="send-form">
+            <!-- 收件人 -->
+            <div class="form-group">
+                <label for="recipient-search">收件人</label>
+                {% if recipient %}
+                <div id="selected-recipient" class="selected-recipient">
+                    <img src="{{ recipient.avatar }}" alt="{{ recipient.username }}" class="recipient-avatar">
+                    <span class="recipient-name">{{ recipient.username }}</span>
+                    <button type="button" onclick="clearRecipient()" class="clear-btn">✕</button>
+                    <input type="hidden" id="recipient-id" value="{{ recipient.id }}">
+                </div>
+                {% else %}
+                <div id="selected-recipient" class="selected-recipient hidden">
+                    <img id="recipient-avatar" src="" alt="" class="recipient-avatar">
+                    <span id="recipient-name" class="recipient-name"></span>
+                    <button type="button" onclick="clearRecipient()" class="clear-btn">✕</button>
+                    <input type="hidden" id="recipient-id" value="">
+                </div>
+                {% endif %}
+                <div id="recipient-search-container" class="{{ 'hidden' if recipient else '' }}">
+                    <input type="text" id="recipient-search" placeholder="搜索用户名..." class="form-input" autocomplete="off">
+                    <div id="search-results" class="search-results hidden"></div>
+                </div>
+            </div>
+
+            <!-- 主题 -->
+            <div class="form-group">
+                <label for="subject">主题 <span class="optional">（可选）</span></label>
+                <input type="text" id="subject" placeholder="消息主题" maxlength="100" class="form-input">
+            </div>
+
+            <!-- 内容 -->
+            <div class="form-group">
+                <label for="content">消息内容</label>
+                <textarea id="content" placeholder="输入消息内容..." rows="5" maxlength="2000" class="form-textarea"></textarea>
+                <div class="form-footer">
+                    <span id="char-count" class="char-count">0/2000</span>
+                </div>
+            </div>
+
+            <!-- 提交按钮 -->
+            <div class="form-actions">
+                <a href="{{ url_for('message.inbox') }}" class="btn btn-outline">取消</a>
+                <button type="submit" class="btn btn-primary" id="send-btn">发送消息</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* 新消息页面 */
+.new-message-page {
+    padding: 20px 16px 40px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* 页面头部 */
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.back-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+/* 表单卡片 */
+.message-form-card {
+    padding: 20px;
+}
+
+/* 表单组 */
+.form-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.optional {
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.5;
+}
+
+/* 收件人选择 */
+.selected-recipient {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+}
+
+.selected-recipient.hidden {
+    display: none;
+}
+
+.recipient-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.recipient-name {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.clear-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 1rem;
+}
+</style>
+
+<style>
+/* 搜索结果 */
+.search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.search-results.hidden {
+    display: none;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover,
+.search-result-item:active {
+    background: var(--bg-secondary);
+}
+
+.search-result-item img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.search-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* 表单底部 */
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+}
+
+.char-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* 表单操作 */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+/* 手机端适配 */
+@media (max-width: 640px) {
+    .new-message-page {
+        padding: 16px 12px 30px;
+    }
+
+    .back-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .message-form-card {
+        padding: 16px;
+    }
+
+    .form-group label {
+        font-size: 0.85rem;
+    }
+
+    .form-input,
+    .form-textarea {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+
+    .form-textarea {
+        min-height: 100px;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+    }
+}
+
+/* 超小屏幕 */
+@media (max-width: 380px) {
+    .page-header {
+        gap: 10px;
+    }
+
+    .selected-recipient {
+        padding: 8px 12px;
+    }
+
+    .recipient-avatar {
+        width: 28px;
+        height: 28px;
+    }
+}
+</style>
+
+<script>
+let searchTimeout;
+
+// 字符计数
+document.getElementById('content').addEventListener('input', function() {
+    document.getElementById('char-count').textContent = this.value.length + '/2000';
+});
+
+// 搜索用户
+document.getElementById('recipient-search').addEventListener('input', function() {
+    const query = this.value.trim();
+    clearTimeout(searchTimeout);
+    
+    if (query.length < 2) {
+        document.getElementById('search-results').classList.add('hidden');
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetch(`/messages/api/search-users?q=${encodeURIComponent(query)}`)
+            .then(r => r.json())
+            .then(data => {
+                const results = document.getElementById('search-results');
+                if (data.users && data.users.length > 0) {
+                    results.innerHTML = data.users.map(u => `
+                        <div onclick="selectRecipient(${u.id}, '${u.username}', '${u.avatar}')" class="search-result-item">
+                            <img src="${u.avatar}" alt="${u.username}">
+                            <span>${u.username}</span>
+                        </div>
+                    `).join('');
+                    results.classList.remove('hidden');
+                } else {
+                    results.innerHTML = '<div class="search-empty">未找到用户</div>';
+                    results.classList.remove('hidden');
+                }
+            });
+    }, 300);
+});
+
+// 选择收件人
+function selectRecipient(id, username, avatar) {
+    document.getElementById('recipient-id').value = id;
+    document.getElementById('recipient-name').textContent = username;
+    document.getElementById('recipient-avatar').src = avatar;
+    document.getElementById('selected-recipient').classList.remove('hidden');
+    document.getElementById('recipient-search-container').classList.add('hidden');
+    document.getElementById('search-results').classList.add('hidden');
+}
+
+// 清除收件人
+function clearRecipient() {
+    document.getElementById('recipient-id').value = '';
+    document.getElementById('selected-recipient').classList.add('hidden');
+    document.getElementById('recipient-search-container').classList.remove('hidden');
+    document.getElementById('recipient-search').value = '';
+}
+
+// 发送消息
+document.getElementById('send-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const recipientId = document.getElementById('recipient-id').value;
+    const subject = document.getElementById('subject').value.trim();
+    const content = document.getElementById('content').value.trim();
+    
+    if (!recipientId) {
+        alert('请选择收件人');
+        return;
+    }
+    
+    if (!content) {
+        alert('请输入消息内容');
+        return;
+    }
+    
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true;
+    btn.textContent = '发送中...';
+    
+    fetch('/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            recipient_id: parseInt(recipientId),
+            subject: subject || null,
+            content: content
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = `/messages/conversation/${recipientId}`;
+        } else {
+            alert('发送失败: ' + data.message);
+            btn.disabled = false;
+            btn.textContent = '发送消息';
+        }
+    })
+    .catch(() => {
+        alert('发送失败，请稍后重试');
+        btn.disabled = false;
+        btn.textContent = '发送消息';
+    });
+});
+
+// 点击外部关闭搜索结果
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#recipient-search-container')) {
+        document.getElementById('search-results').classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

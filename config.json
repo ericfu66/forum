@@ -1,0 +1,126 @@
+{
+  "site": {
+    "name": "AI智能论坛",
+    "description": "融合AI技术的智能交流平台",
+    "keywords": "AI论坛,智能社区,交流平台,人工智能",
+    "logo": "/static/images/logo.png"
+  },
+  "ai_global": {
+    "api_base": "https://api.yuegle.com/v1",
+    "api_key": "sk-tmLQVmTsUrJ1YHXh3f2eA78bFc384d00Ba21D63580A5304e",
+    "model": "gemini-3-pro-preview",
+    "max_tokens": 2000,
+    "temperature": 0.7
+  },
+  "ai_modules": {
+    "moderation": {
+      "use_global": true,
+      "api_base": "https://api.deepseek.com/v1",
+      "api_key": "sk-99497697bf294d4a8f31ab9796bbe5f1",
+      "model": "deepseek-chat",
+      "max_tokens": 1000,
+      "temperature": 0.3
+    },
+    "chat": {
+      "use_global": true,
+      "api_base": "",
+      "api_key": "",
+      "model": "",
+      "max_tokens": 4000,
+      "temperature": 0.7
+    },
+    "write": {
+      "use_global": true,
+      "api_base": "",
+      "api_key": "",
+      "model": "",
+      "max_tokens": 8000,
+      "temperature": 0.8
+    },
+    "roast": {
+      "use_global": true,
+      "api_base": "",
+      "api_key": "",
+      "model": "",
+      "max_tokens": 500,
+      "temperature": 0.9
+    },
+    "image": {
+      "use_global": false,
+      "api_base": "https://site.atopes.de/v1",
+      "api_key": "sk-TLfRQmO8l0ypOIU9qYZz0h8CsLueorT8ssNCQgEPuUPtglrn",
+      "model": "gemini-3-pro-image-preview-1k",
+      "available_models": "gemini-3-pro-image-preview-1k",
+      "default_size": "1024x1024",
+      "num_inference_steps": 20,
+      "guidance_scale": 7.5
+    },
+    "vision": {
+      "use_global": false,
+      "api_base": "https://api.siliconflow.cn/v1",
+      "api_key": "sk-lxyuvnsjzjjyscdydksumgivayqihstnscshsfxngfqggntf",
+      "model": "zai-org/GLM-4.6V",
+      "default_detail": "high"
+    }
+  },
+  "search": {
+    "enabled": true,
+    "tavily_api_key": "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",
+    "max_results": 5,
+    "search_depth": "basic"
+  },
+  "ai_triggers": {
+    "roast": {
+      "enabled": true,
+      "probability": 0.1,
+      "min_post_length": 50,
+      "max_roasts_per_day": 100,
+      "cooldown_minutes": 30,
+      "excluded_boards": [],
+      "excluded_users": []
+    }
+  },
+  "pagination": {
+    "posts_per_page": 20,
+    "comments_per_page": 50,
+    "users_per_page": 30
+  },
+  "features": {
+    "registration_open": true,
+    "guest_posting": false,
+    "ai_features_enabled": true
+  },
+  "ai_moderation": {
+    "enabled": true,
+    "sensitivity": "low",
+    "auto_reject_threshold": 0.9,
+    "hold_threshold": 0.6,
+    "check_spam": true,
+    "check_inappropriate": true,
+    "check_sensitive": true,
+    "check_provocative": true
+  },
+  "petals": {
+    "enabled": true,
+    "count": 12,
+    "min_duration": 10,
+    "max_duration": 18,
+    "theme": "sakura",
+    "parallax_enabled": true
+  },
+  "cat_girl": {
+    "name": "lw喵"
+  },
+  "embedding": {
+    "api_base": "https://api.siliconflow.cn/v1",
+    "api_key": "sk-lxyuvnsjzjjyscdydksumgivayqihstnscshsfxngfqggntf",
+    "model": "Qwen/Qwen3-Embedding-8B",
+    "dimensions": 1024,
+    "timeout": 30
+  },
+  "knowledge": {
+    "search_limit": 5,
+    "similarity_threshold": 0.3,
+    "max_context_chars": 8000
+  }
+}

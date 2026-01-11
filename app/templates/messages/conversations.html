@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}对话列表 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="messages-page">
+    <!-- 页面头部 -->
+    <div class="messages-header">
+        <h1 class="messages-title">💬 对话列表</h1>
+        <div class="messages-header-actions">
+            <a href="{{ url_for('message.inbox') }}" class="btn btn-outline btn-sm">收件箱</a>
+            <a href="{{ url_for('message.new_message') }}" class="btn btn-primary btn-sm">✉️ 新消息</a>
+        </div>
+    </div>
+
+    <!-- 猫娘好友快捷入口 -->
+    <div class="cat-girl-card">
+        <div class="cat-girl-content">
+            <img src="{{ cat_girl.avatar }}" alt="{{ cat_girl.username }}" class="cat-girl-avatar">
+            <div class="cat-girl-info">
+                <h3>🐱 {{ cat_girl.username }}</h3>
+                <p>你的AI猫娘好友，随时可以聊天喵~</p>
+            </div>
+            <a href="{{ url_for('message.conversation', user_id=cat_girl.id) }}" class="btn cat-girl-btn">
+                <span class="cat-girl-btn-full">开始聊天 (=^･ω･^=)</span>
+                <span class="cat-girl-btn-short">聊天</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 对话列表 -->
+    <div class="card conversations-card">
+        {% if conversations %}
+        <div class="conversation-list">
+            {% for conv in conversations %}
+            <a href="{{ url_for('message.conversation', user_id=conv.user.id) }}" 
+               class="conversation-item {{ 'unread' if conv.unread_count > 0 else '' }}">
+                <img src="{{ conv.user.avatar }}" alt="{{ conv.user.username }}" class="conv-avatar">
+                <div class="conv-content">
+                    <div class="conv-header">
+                        <strong class="conv-name">{{ conv.user.username }}</strong>
+                        <span class="conv-time">{{ conv.last_message_time[5:16] if conv.last_message_time else '' }}</span>
+                    </div>
+                    <p class="conv-preview">{{ conv.last_message[:60] }}{{ '...' if conv.last_message|length > 60 else '' }}</p>
+                </div>
+                {% if conv.unread_count > 0 %}
+                <div class="conv-badge">
+                    <span class="badge badge-primary">{{ conv.unread_count }}</span>
+                </div>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if total > per_page %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="{{ url_for('message.conversations', page=page-1) }}" class="btn btn-outline btn-sm">上一页</a>
+            {% endif %}
+            <span class="page-info">{{ page }} / {{ ((total - 1) // per_page) + 1 }}</span>
+            {% if (page * per_page) < total %}
+            <a href="{{ url_for('message.conversations', page=page+1) }}" class="btn btn-outline btn-sm">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <p>暂无对话</p>
+            <a href="{{ url_for('message.conversation', user_id=cat_girl.id) }}" class="btn btn-primary">
+                和{{ cat_girl.username }}聊聊天吧~ 🐱
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* 信箱页面基础样式 */
+.messages-page {
+    padding: 20px 16px 40px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* 页面头部 */
+.messages-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.messages-title {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.messages-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* 猫娘卡片 */
+.cat-girl-card {
+    background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    color: white;
+}
+
+.cat-girl-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cat-girl-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid white;
+    flex-shrink: 0;
+}
+
+.cat-girl-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cat-girl-info h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: white;
+}
+
+.cat-girl-info p {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cat-girl-btn {
+    background: white;
+    color: #FF69B4;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cat-girl-btn-short {
+    display: none;
+}
+
+/* 对话卡片 */
+.conversations-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+/* 对话列表 */
+.conversation-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.conversation-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.2s;
+}
+
+.conversation-item:last-child {
+    border-bottom: none;
+}
+
+.conversation-item:hover,
+.conversation-item:active {
+    background: var(--bg-secondary);
+}
+
+.conversation-item.unread {
+    background: color-mix(in srgb, var(--primary-color) 5%, var(--bg-primary));
+}
+
+.conv-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+.conv-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.conv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.conv-name {
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conv-time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.conv-preview {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conv-badge {
+    flex-shrink: 0;
+}
+
+/* 分页 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.page-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--text-muted);
+}
+
+.empty-icon {
+    font-size: 3.5rem;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    margin-bottom: 16px;
+}
+
+/* 手机端适配 */
+@media (max-width: 640px) {
+    .messages-page {
+        padding: 16px 12px 30px;
+    }
+
+    .messages-title {
+        font-size: 1.25rem;
+    }
+
+    .cat-girl-avatar {
+        width: 42px;
+        height: 42px;
+    }
+
+    .cat-girl-info h3 {
+        font-size: 0.9rem;
+    }
+
+    .cat-girl-info p {
+        display: none;
+    }
+
+    .cat-girl-btn-full {
+        display: none;
+    }
+
+    .cat-girl-btn-short {
+        display: inline;
+    }
+
+    .conversation-item {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .conv-avatar {
+        width: 42px;
+        height: 42px;
+    }
+
+    .conv-name {
+        font-size: 0.9rem;
+    }
+
+    .conv-preview {
+        font-size: 0.8rem;
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+    }
+}
+
+/* 超小屏幕 */
+@media (max-width: 380px) {
+    .messages-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .messages-header-actions {
+        width: 100%;
+    }
+
+    .messages-header-actions .btn {
+        flex: 1;
+        text-align: center;
+    }
+
+    .cat-girl-content {
+        flex-wrap: wrap;
+    }
+
+    .cat-girl-btn {
+        width: 100%;
+        text-align: center;
+        margin-top: 8px;
+    }
+
+    .cat-girl-btn-full {
+        display: inline;
+    }
+
+    .cat-girl-btn-short {
+        display: none;
+    }
+}
+</style>
+{% endblock %}

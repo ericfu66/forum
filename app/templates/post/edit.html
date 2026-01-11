@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}编辑帖子 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-control {
+    min-height: 44px;
+}
+
+/* 媒体上传区域 */
+.media-upload-section {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 2px dashed var(--border-color);
+}
+
+.media-upload-section h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.upload-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+}
+
+.upload-btn input[type="file"] {
+    display: none;
+}
+
+/* 图片预览 */
+.image-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: var(--spacing-sm);
+}
+
+.image-preview-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+}
+
+.image-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-preview-item .remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 语音预览 */
+.audio-preview {
+    margin-top: var(--spacing-sm);
+    padding: 10px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.audio-preview audio {
+    flex: 1;
+    height: 40px;
+}
+
+.audio-preview .remove-btn {
+    padding: 6px 12px;
+    background: #F44336;
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="card">
+        <h2 class="card-title">编辑帖子</h2>
+
+        <form method="POST" action="{{ url_for('post.edit', post_id=post.id) }}" enctype="multipart/form-data" style="margin-top: 20px;">
+            <div class="form-group">
+                <label class="form-label">标题</label>
+                <input type="text" name="title" class="form-control" value="{{ post.title }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">内容</label>
+                <textarea name="content" class="form-control" rows="12" required>{{ post.content }}</textarea>
+            </div>
+
+            <!-- 图片管理 -->
+            <div class="form-group">
+                <div class="media-upload-section">
+                    <h4>🖼️ 图片管理</h4>
+                    <div class="image-preview-container" id="existing-images">
+                        {% for image in post.images %}
+                        <div class="image-preview-item" data-url="{{ image }}">
+                            <img src="{{ image }}" alt="帖子图片">
+                            <input type="hidden" name="keep_images" value="{{ image }}">
+                            <button type="button" class="remove-btn" onclick="removeExistingImage(this)">×</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="upload-area" style="margin-top: var(--spacing-sm);">
+                        <label class="upload-btn">
+                            <span>📷</span>
+                            <span>添加新图片</span>
+                            <input type="file" name="images" id="image-input" multiple accept="image/*">
+                        </label>
+                        <small style="color: var(--text-muted);">支持 PNG、JPG、GIF、WebP 格式</small>
+                    </div>
+                    <div class="image-preview-container" id="new-image-preview"></div>
+                </div>
+            </div>
+
+            <!-- 语音管理 -->
+            <div class="form-group">
+                <div class="media-upload-section">
+                    <h4>🎤 语音管理</h4>
+                    {% if post.audio_url %}
+                    <div class="audio-preview" id="existing-audio">
+                        <span>🎵</span>
+                        <audio controls>
+                            <source src="{{ post.audio_url }}" type="audio/mpeg">
+                        </audio>
+                        <button type="button" class="remove-btn" onclick="removeExistingAudio()">删除</button>
+                    </div>
+                    <input type="hidden" name="remove_audio" id="remove-audio-flag" value="0">
+                    {% endif %}
+                    <div class="upload-area" style="margin-top: var(--spacing-sm);">
+                        <label class="upload-btn">
+                            <span>📁</span>
+                            <span>{% if post.audio_url %}替换语音{% else %}上传语音{% endif %}</span>
+                            <input type="file" name="audio" id="audio-input" accept="audio/*">
+                        </label>
+                        <small style="color: var(--text-muted);">支持 MP3、WAV、OGG、M4A 格式</small>
+                    </div>
+                    <div class="audio-preview" id="new-audio-preview" style="display: none;">
+                        <span>🎵</span>
+                        <audio id="new-audio-player" controls></audio>
+                        <button type="button" class="remove-btn" onclick="removeNewAudio()">取消</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="submit" class="btn btn-primary">保存修改</button>
+                <a href="{{ url_for('post.detail', post_id=post.id) }}" class="btn btn-ghost">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 移除已有图片
+function removeExistingImage(btn) {
+    const item = btn.closest('.image-preview-item');
+    item.remove();
+}
+
+// 新图片上传预览
+const imageInput = document.getElementById('image-input');
+const newImagePreview = document.getElementById('new-image-preview');
+let newImages = [];
+
+imageInput.addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    const existingCount = document.querySelectorAll('#existing-images .image-preview-item').length;
+    
+    if (existingCount + newImages.length + files.length > 9) {
+        Utils.showToast('最多只能有9张图片', 'warning');
+        return;
+    }
+    
+    files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+            newImages.push(file);
+            addNewImagePreview(file, newImages.length - 1);
+        }
+    });
+    
+    updateImageInput();
+});
+
+function addNewImagePreview(file, index) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const div = document.createElement('div');
+        div.className = 'image-preview-item';
+        div.dataset.index = index;
+        div.innerHTML = `
+            <img src="${e.target.result}" alt="新图片">
+            <button type="button" class="remove-btn" onclick="removeNewImage(${index})">×</button>
+        `;
+        newImagePreview.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeNewImage(index) {
+    newImages.splice(index, 1);
+    renderNewImagePreviews();
+    updateImageInput();
+}
+
+function renderNewImagePreviews() {
+    newImagePreview.innerHTML = '';
+    newImages.forEach((file, index) => {
+        addNewImagePreview(file, index);
+    });
+}
+
+function updateImageInput() {
+    const dt = new DataTransfer();
+    newImages.forEach(file => dt.items.add(file));
+    imageInput.files = dt.files;
+}
+
+// 语音管理
+function removeExistingAudio() {
+    document.getElementById('existing-audio').style.display = 'none';
+    document.getElementById('remove-audio-flag').value = '1';
+}
+
+const audioInput = document.getElementById('audio-input');
+const newAudioPreview = document.getElementById('new-audio-preview');
+const newAudioPlayer = document.getElementById('new-audio-player');
+
+audioInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        newAudioPlayer.src = URL.createObjectURL(file);
+        newAudioPreview.style.display = 'flex';
+    }
+});
+
+function removeNewAudio() {
+    audioInput.value = '';
+    newAudioPlayer.src = '';
+    newAudioPreview.style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="min-height: calc(100vh - 200px); display: flex; align-items: center; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 400px;">
+        <div class="card-header" style="text-align: center;">
+            <h2 class="card-title">注册</h2>
+            <p class="text-muted">加入 {{ site_name }}</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <div class="form-group">
+                <label class="form-label">用户名</label>
+                <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">邮箱</label>
+                <input type="email" name="email" class="form-control" placeholder="请输入邮箱" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">密码</label>
+                <input type="password" name="password" class="form-control" placeholder="请输入密码（至少6位）" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">确认密码</label>
+                <input type="password" name="confirm_password" class="form-control" placeholder="请再次输入密码" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">验证码</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" 
+                           name="captcha" 
+                           class="form-control" 
+                           placeholder="请输入验证码" 
+                           required 
+                           style="flex: 1;"
+                           maxlength="4">
+                    <img id="captcha-image" 
+                         src="" 
+                         alt="验证码" 
+                         style="height: 40px; cursor: pointer; border: 1px solid var(--border-color); border-radius: 4px;"
+                         onclick="refreshCaptcha()"
+                         title="点击刷新验证码">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">注册</button>
+        </form>
+
+        <div class="card-footer" style="text-align: center; margin-top: 20px;">
+            <p class="text-muted">已有账号？ <a href="{{ url_for('auth.login') }}">立即登录</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadCaptcha() {
+    fetch('/auth/api/captcha')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('captcha-image').src = data.image;
+            }
+        })
+        .catch(err => console.error('加载验证码失败:', err));
+}
+
+function refreshCaptcha() {
+    fetch('/auth/api/captcha/refresh', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('captcha-image').src = data.image;
+            }
+        })
+        .catch(err => console.error('刷新验证码失败:', err));
+}
+
+// 页面加载时获取验证码
+document.addEventListener('DOMContentLoaded', loadCaptcha);
+</script>
+{% endblock %}
