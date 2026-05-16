@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>用户管理</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+    </div>
+
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color);">
+                    <th style="padding: 12px; text-align: left;">用户</th>
+                    <th style="padding: 12px; text-align: left;">邮箱</th>
+                    <th style="padding: 12px; text-align: left;">角色</th>
+                    <th style="padding: 12px; text-align: left;">状态</th>
+                    <th style="padding: 12px; text-align: left;">注册时间</th>
+                    <th style="padding: 12px; text-align: center;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img src="{{ user.avatar }}" alt="avatar" class="avatar avatar-sm">
+                            <span>{{ user.username }}</span>
+                        </div>
+                    </td>
+                    <td style="padding: 12px;">{{ user.email }}</td>
+                    <td style="padding: 12px;">
+                        <span class="badge {% if user.role == 'admin' %}badge-ai{% else %}badge-primary{% endif %}">
+                            {{ '管理员' if user.role == 'admin' else '版主' if user.role == 'moderator' else '用户' }}
+                        </span>
+                    </td>
+                    <td style="padding: 12px;">
+                        {% if user.is_banned %}
+                        <span class="badge badge-secondary" style="background: #F44336;">已封禁</span>
+                        {% else %}
+                        <span class="badge badge-secondary" style="background: #4CAF50;">正常</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 12px; color: var(--text-muted);">{{ user.created_at[:10] }}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="changeRole({{ user.id }}, '{{ user.role }}')" class="btn btn-ghost btn-sm">修改角色</button>
+                        {% if user.is_banned %}
+                        <button onclick="unbanUser({{ user.id }})" class="btn btn-ghost btn-sm">解封</button>
+                        {% else %}
+                        <button onclick="banUser({{ user.id }})" class="btn btn-ghost btn-sm">封禁</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 分页 -->
+        {% if total > 30 %}
+        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+            {% if page > 1 %}
+            <a href="{{ url_for('admin.users', page=page-1) }}" class="btn btn-outline btn-sm">上一页</a>
+            {% endif %}
+            <span class="btn btn-ghost btn-sm" style="cursor: default;">第 {{ page }} 页，共 {{ (total / 30) | round(0, 'ceil') | int }} 页</span>
+            {% if (page * 30) < total %}
+            <a href="{{ url_for('admin.users', page=page+1) }}" class="btn btn-outline btn-sm">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function banUser(userId) {
+    if (!confirm('确定要封禁此用户吗？')) return;
+    fetch(`/admin/users/${userId}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: '管理员操作' })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        }
+    });
+}
+
+function unbanUser(userId) {
+    if (!confirm('确定要解封此用户吗？')) return;
+    fetch(`/admin/users/${userId}/unban`, { method: 'POST' })
+        .then(r => r.json()).then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        }
+    });
+}
+
+function changeRole(userId, currentRole) {
+    const newRole = prompt('请输入新角色 (user/admin/moderator):', currentRole);
+    if (!newRole || !['user', 'admin', 'moderator'].includes(newRole)) {
+        if (newRole) alert('无效的角色');
+        return;
+    }
+    fetch(`/admin/users/${userId}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

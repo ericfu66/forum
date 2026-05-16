@@ -1,0 +1,3436 @@
+{% extends "base.html" %}
+
+{% block title %}AI小说区 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.novel-page {
+    display: flex;
+    height: calc(100vh - 70px);
+}
+
+.novel-sidebar {
+    width: 320px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.novel-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.character-selector {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 40%;
+    overflow-y: auto;
+}
+
+.character-selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.character-selector-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.character-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.character-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.character-item:hover { background: var(--bg-tertiary); }
+.character-item.active { background: var(--primary-light); border-color: var(--primary-color); }
+
+.character-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+}
+
+.character-info { flex: 1; min-width: 0; }
+.character-name { font-weight: 600; font-size: 0.9rem; }
+.character-desc { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.character-divider {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 12px 0 6px;
+    border-top: 1px solid var(--border-color);
+    margin-top: 8px;
+}
+
+.novel-dialogs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.dialog-section-title {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dialog-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+}
+
+.dialog-item:hover { background: var(--bg-tertiary); }
+.dialog-item.active { background: var(--primary-light); }
+.dialog-item-icon { font-size: 1.2rem; }
+.dialog-item-content { flex: 1; min-width: 0; }
+.dialog-item-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dialog-item-time { font-size: 0.75rem; color: var(--text-muted); }
+
+.dialog-item-delete {
+    opacity: 0;
+    padding: 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+.dialog-item:hover .dialog-item-delete { opacity: 1; }
+.dialog-item-delete:hover { color: #F44336; }
+
+/* 主区域 */
+.novel-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+}
+
+.novel-header {
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.novel-header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.novel-header-title h2 { margin: 0; font-size: 1.1rem; }
+
+.novel-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* 流式开关样式 */
+.stream-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: var(--bg-tertiary);
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.stream-toggle:hover {
+    background: var(--bg-secondary);
+}
+
+.stream-toggle input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.stream-toggle input:checked + .stream-label {
+    color: var(--primary-color);
+}
+
+.stream-label {
+    color: var(--text-muted);
+    transition: color 0.2s;
+}
+
+/* 消息区域 */
+.novel-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.novel-message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    max-width: 85%;
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.novel-message.user-message {
+    flex-direction: row-reverse;
+    margin-left: auto;
+}
+
+.message-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.user-message .message-avatar {
+    background: linear-gradient(135deg, var(--primary-color), #ff6b6b);
+}
+
+.message-bubble {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 14px 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    line-height: 1.7;
+}
+
+[data-theme="dark"] .message-bubble {
+    background: rgba(30, 30, 50, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.assistant-message .message-bubble {
+    border-top-left-radius: 6px;
+}
+
+.user-message .message-bubble {
+    border-top-right-radius: 6px;
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.9), rgba(156, 39, 176, 0.9));
+    color: white;
+    border: none;
+}
+
+.message-content {
+    word-break: break-word;
+}
+
+.message-content p { margin: 0 0 8px; }
+.message-content p:last-child { margin-bottom: 0; }
+
+.message-content em {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.user-message .message-content em {
+    color: rgba(255,255,255,0.8);
+}
+
+.message-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.novel-message:hover .message-actions {
+    opacity: 1;
+}
+
+.message-action-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    background: rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.message-action-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* 打字动画 */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* 欢迎界面 */
+.welcome-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px;
+}
+
+.welcome-icon { font-size: 4rem; margin-bottom: 20px; }
+.welcome-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+.welcome-desc { color: var(--text-muted); margin-bottom: 24px; }
+
+.welcome-features {
+    display: flex;
+    gap: 16px;
+}
+
+.feature-card {
+    padding: 16px 24px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+[data-theme="dark"] .feature-card {
+    background: rgba(30,30,50,0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.feature-icon { font-size: 2rem; }
+.feature-text { font-size: 0.9rem; font-weight: 500; }
+
+/* 输入区域 */
+.novel-input-area {
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+.novel-input-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.novel-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    resize: none;
+    max-height: 150px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.novel-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+#send-btn {
+    height: 48px;
+    padding: 0 24px;
+    border-radius: 24px;
+}
+
+/* 模态框 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-content.modal-large {
+    max-width: 700px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-title { font-size: 1.2rem; font-weight: 600; }
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* 预设列表 */
+.preset-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+}
+
+.preset-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.preset-item {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.preset-item.preset-required {
+    border-left: 3px solid var(--primary-color);
+}
+
+.preset-item-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.preset-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.preset-role {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+
+.badge-user { background: #e3f2fd; color: #1976d2; }
+.badge-assistant { background: #f3e5f5; color: #7b1fa2; }
+.badge-system { background: #fff3e0; color: #f57c00; }
+
+.preset-content-preview {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.preset-content-preview:hover {
+    background: var(--bg-primary);
+}
+
+.expand-hint {
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    margin-left: 8px;
+}
+
+.preset-content-full {
+    margin-top: 8px;
+}
+
+.preset-content-full pre {
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* 开关样式 */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--bg-tertiary);
+    transition: 0.3s;
+    border-radius: 22px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider { background-color: var(--primary-color); }
+input:checked + .toggle-slider:before { transform: translateX(18px); }
+input:disabled + .toggle-slider { opacity: 0.5; cursor: not-allowed; }
+
+/* Persona输入 */
+.persona-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+.persona-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    resize: vertical;
+    font-size: 0.9rem;
+}
+
+.persona-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* 角色表单 */
+.character-form .form-group {
+    margin-bottom: 16px;
+}
+
+.character-form label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.character-form .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.character-form .form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.character-form textarea.form-input {
+    resize: vertical;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 2000;
+    animation: toastIn 0.3s ease;
+}
+
+.toast-success { background: #4caf50; color: white; }
+.toast-error { background: #f44336; color: white; }
+.toast-warning { background: #ff9800; color: white; }
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* 导入区域样式 */
+.import-section {
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.import-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.import-header:hover {
+    background: var(--bg-tertiary);
+}
+
+.import-toggle {
+    transition: transform 0.2s;
+    color: var(--text-muted);
+}
+
+.import-content {
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+}
+
+.import-content textarea {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+/* 头像上传样式 */
+.avatar-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.avatar-preview {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    overflow: hidden;
+}
+
+.avatar-options {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* 正则表达式区域 */
+.regex-section {
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.regex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.regex-header:hover {
+    background: var(--bg-tertiary);
+}
+
+.regex-toggle {
+    color: var(--text-muted);
+}
+
+.regex-content {
+    padding: 16px;
+    background: var(--bg-tertiary);
+}
+
+.regex-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.regex-rule-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.regex-rule-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.regex-rule-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.regex-rule-inputs input {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+/* 提示词预览样式 */
+.prompt-preview-stats {
+    display: flex;
+    gap: 24px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.prompt-preview-stats span {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.prompt-preview-stats strong {
+    color: var(--primary-color);
+}
+
+.prompt-preview-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.prompt-message-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.prompt-message-role {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.prompt-message-role.role-system { background: #fff3e0; color: #f57c00; }
+.prompt-message-role.role-user { background: #e3f2fd; color: #1976d2; }
+.prompt-message-role.role-assistant { background: #f3e5f5; color: #7b1fa2; }
+
+.prompt-message-content {
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    max-height: 100px;
+    overflow-y: auto;
+    color: var(--text-secondary);
+}
+
+/* 自定义预设样式 */
+.preset-custom {
+    border-left: 3px solid #4caf50;
+}
+
+.preset-overridden {
+    border-left: 3px solid #ff9800;
+}
+
+.preset-modified-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: #fff3e0;
+    color: #f57c00;
+    margin-left: 4px;
+}
+
+/* 导入预览样式 */
+.import-preview-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.import-preview-item:last-child {
+    border-bottom: none;
+}
+
+.import-preview-item .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.import-preview-list {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.btn-xs {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkbox-label input {
+    width: 18px;
+    height: 18px;
+}
+
+/* 角色头像图片支持 */
+.character-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .novel-page {
+        height: calc(100vh - 60px);
+        position: relative;
+    }
+    
+    /* 侧边栏移动端样式 */
+    .novel-sidebar {
+        position: fixed;
+        left: 0;
+        top: 60px;
+        bottom: 0;
+        width: 85%;
+        max-width: 320px;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+    }
+    
+    .novel-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    /* 侧边栏遮罩 */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 99;
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    /* 移动端菜单按钮 */
+    .mobile-menu-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: var(--bg-tertiary);
+        border-radius: 10px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        margin-right: 8px;
+    }
+    
+    /* 头部优化 */
+    .novel-header {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .novel-header-title {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .novel-header-title h2 {
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .novel-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .novel-header-actions .btn {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .stream-toggle {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+    
+    /* 消息区域 */
+    .novel-messages {
+        padding: 12px;
+    }
+    
+    .novel-message {
+        max-width: 92%;
+        gap: 8px;
+    }
+    
+    .message-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+    
+    .message-bubble {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    
+    .message-actions {
+        opacity: 1;
+        margin-top: 8px;
+    }
+    
+    /* 输入区域 */
+    .novel-input-area {
+        padding: 10px 12px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    
+    .novel-input-wrapper {
+        gap: 8px;
+    }
+    
+    .novel-input {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    
+    #send-btn {
+        height: 42px;
+        padding: 0 16px;
+        font-size: 0.9rem;
+    }
+    
+    /* 欢迎界面 */
+    .welcome-screen {
+        padding: 20px;
+    }
+    
+    .welcome-icon {
+        font-size: 3rem;
+    }
+    
+    .welcome-title {
+        font-size: 1.2rem;
+    }
+    
+    .welcome-features {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+    
+    .feature-card {
+        padding: 12px 16px;
+        flex-direction: row;
+        width: 100%;
+    }
+    
+    /* 模态框优化 */
+    .modal-content {
+        padding: 16px;
+        width: 95%;
+        max-height: 85vh;
+        margin: 10px;
+        border-radius: 16px;
+    }
+    
+    .modal-content.modal-large {
+        max-width: 95%;
+    }
+    
+    .modal-header {
+        margin-bottom: 16px;
+    }
+    
+    .modal-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-footer {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .modal-footer .btn {
+        flex: 1;
+        min-width: 80px;
+    }
+    
+    /* 预设配置优化 */
+    .preset-profile-section {
+        padding: 10px !important;
+    }
+    
+    .preset-profile-section > div {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
+    .preset-profile-section select {
+        max-width: 100% !important;
+    }
+    
+    .preset-profile-section .btn {
+        width: 100%;
+    }
+    
+    .preset-item {
+        padding: 10px;
+    }
+    
+    .preset-item-header {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .preset-name {
+        flex: 1 1 100%;
+        margin-bottom: 4px;
+    }
+    
+    .preset-content-preview {
+        font-size: 0.75rem;
+    }
+    
+    /* 角色表单优化 */
+    .avatar-upload-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .avatar-options {
+        width: 100%;
+    }
+    
+    .regex-rule-inputs {
+        grid-template-columns: 1fr;
+    }
+    
+    /* 角色选择器优化 */
+    .character-selector {
+        max-height: 35%;
+    }
+    
+    .character-item {
+        padding: 8px 10px;
+    }
+    
+    .character-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+    
+    /* 对话列表优化 */
+    .dialog-item {
+        padding: 10px;
+    }
+    
+    .dialog-item-delete {
+        opacity: 1;
+    }
+}
+
+/* 超小屏幕适配 */
+@media (max-width: 380px) {
+    .novel-header-actions .btn {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+    }
+    
+    .stream-toggle .stream-label {
+        display: none;
+    }
+    
+    .message-bubble {
+        padding: 8px 12px;
+    }
+    
+    #send-btn {
+        padding: 0 12px;
+    }
+}
+
+/* 桌面端隐藏移动端元素 */
+@media (min-width: 769px) {
+    .mobile-menu-btn {
+        display: none !important;
+    }
+    
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="novel-page">
+    <!-- 移动端侧边栏遮罩 -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+    
+    <!-- 左侧面板 -->
+    <div class="novel-sidebar" id="novel-sidebar">
+        <div class="novel-sidebar-header">
+            <button class="btn btn-primary" onclick="novel.createNewDialog()" style="width: 100%;">
+                ✨ 开始新故事
+            </button>
+        </div>
+
+        <!-- 角色选择器 -->
+        <div class="character-selector">
+            <div class="character-selector-header">
+                <span class="character-selector-label">📚 选择角色</span>
+                <button class="btn btn-ghost btn-sm" onclick="openCharacterModal()" title="管理角色">⚙️</button>
+            </div>
+            <div class="character-list" id="character-list">
+                <!-- 系统角色 -->
+                {% for char in system_characters %}
+                <div class="character-item" data-id="{{ char.id }}" onclick="novel.selectCharacter({{ char.id }})">
+                    <div class="character-avatar">
+                        {% if char.avatar_url %}
+                        <img src="{{ char.avatar_url }}" alt="{{ char.name }}">
+                        {% else %}
+                        {{ char.avatar }}
+                        {% endif %}
+                    </div>
+                    <div class="character-info">
+                        <div class="character-name">{{ char.name }}</div>
+                        <div class="character-desc">{{ char.description[:30] }}...</div>
+                    </div>
+                </div>
+                {% endfor %}
+                <!-- 用户角色 -->
+                {% if user_characters %}
+                <div class="character-divider">我的角色</div>
+                {% for char in user_characters %}
+                <div class="character-item" data-id="{{ char.id }}" onclick="novel.selectCharacter({{ char.id }})">
+                    <div class="character-avatar">
+                        {% if char.avatar_url %}
+                        <img src="{{ char.avatar_url }}" alt="{{ char.name }}">
+                        {% else %}
+                        {{ char.avatar }}
+                        {% endif %}
+                    </div>
+                    <div class="character-info">
+                        <div class="character-name">{{ char.name }}</div>
+                        <div class="character-desc">{{ char.description[:30] }}...</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 对话列表 -->
+        <div class="novel-dialogs" id="dialog-list">
+            <div class="dialog-section-title">历史故事</div>
+            {% for dialog in dialogs %}
+            <div class="dialog-item" data-id="{{ dialog.id }}" onclick="novel.loadDialog({{ dialog.id }})">
+                <span class="dialog-item-icon">📖</span>
+                <div class="dialog-item-content">
+                    <div class="dialog-item-title">{{ dialog.title }}</div>
+                    <div class="dialog-item-time">{{ dialog.updated_at[:10] if dialog.updated_at else '' }}</div>
+                </div>
+                <button class="dialog-item-delete" onclick="event.stopPropagation(); novel.deleteDialog({{ dialog.id }})">🗑️</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 主聊天区域 -->
+    <div class="novel-main">
+        <!-- 头部 -->
+        <div class="novel-header">
+            <div class="novel-header-title">
+                <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="打开菜单">☰</button>
+                <span id="current-character-avatar">📖</span>
+                <h2 id="current-dialog-title">AI小说区</h2>
+            </div>
+            <div class="novel-header-actions">
+                <label class="stream-toggle" title="流式输出">
+                    <input type="checkbox" id="stream-toggle" checked onchange="novel.toggleStream(this.checked)">
+                    <span class="stream-label">🌊 流式</span>
+                </label>
+                <button class="btn btn-ghost btn-sm" onclick="openRegexModal()" title="正则表达式规则">🔧 正则</button>
+                <button class="btn btn-ghost btn-sm" onclick="openPromptPreviewModal()" title="预览提示词">👁️ 预览</button>
+                <button class="btn btn-ghost btn-sm" onclick="openPresetModal()" title="预设配置">⚙️ 预设</button>
+                <button class="btn btn-ghost btn-sm" onclick="openPersonaModal()" title="我的设定">👤 Persona</button>
+            </div>
+        </div>
+
+        <!-- 消息区域 -->
+        <div class="novel-messages" id="messages-container">
+            <div class="welcome-screen" id="welcome-screen">
+                <div class="welcome-icon">📚</div>
+                <div class="welcome-title">欢迎来到AI小说区</div>
+                <div class="welcome-desc">选择一个角色，开始你的沉浸式互动小说体验</div>
+                <div class="welcome-features">
+                    <div class="feature-card">
+                        <span class="feature-icon">👧</span>
+                        <span class="feature-text">青梅竹马</span>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">⚙️</span>
+                        <span class="feature-text">可调预设</span>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">✨</span>
+                        <span class="feature-text">沉浸体验</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="novel-input-area">
+            <div class="novel-input-wrapper">
+                <textarea class="novel-input" id="message-input" placeholder="描述你的行动或对话..." rows="1"></textarea>
+                <button class="btn btn-primary" id="send-btn" onclick="novel.sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 预设配置模态框 -->
+<div class="modal-overlay" id="preset-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title">📋 预设配置</h3>
+            <button class="modal-close" onclick="closePresetModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <!-- 预设配置文件选择器 -->
+            <div class="preset-profile-section" style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="font-weight: 500; font-size: 0.9rem;">📁 配置文件:</span>
+                    <select id="preset-profile-select" class="form-input" style="flex: 1; min-width: 150px; max-width: 250px;" onchange="switchPresetProfile(this.value)">
+                        <option value="">默认 (捌预设)</option>
+                        {% for profile in preset_profiles %}
+                        <option value="{{ profile.id }}" {% if profile.id == current_profile_id %}selected{% endif %}>
+                            {{ profile.name }}{% if not profile.include_system_presets %} (自定义){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-secondary btn-sm" onclick="openSaveProfileModal()" title="保存当前配置">💾 保存</button>
+                    <button class="btn btn-secondary btn-sm" onclick="createEmptyProfile()" title="新建空白配置">📄 新建空白</button>
+                    <button class="btn btn-ghost btn-sm" onclick="openProfileManagerModal()" title="管理配置文件">📂 管理</button>
+                </div>
+            </div>
+            
+            <p class="preset-hint">开启/关闭预设条目来调整AI的行为风格，也可以添加自定义预设</p>
+            
+            <!-- 添加自定义预设按钮 -->
+            <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="openAddPresetModal()">➕ 添加自定义预设</button>
+                <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
+                    📥 导入预设JSON
+                    <input type="file" id="preset-file-input" accept=".json" style="display:none;" onchange="importPresetFile(this)">
+                </label>
+                <button class="btn btn-ghost btn-sm" onclick="exportUserPresets()" title="导出我的预设">📤 导出</button>
+            </div>
+            
+            {% if not include_system_presets %}
+            <div style="padding: 16px; background: var(--bg-tertiary); border-radius: 12px; margin-bottom: 16px; text-align: center;">
+                <p style="margin: 0; color: var(--text-muted);">
+                    📄 当前使用空白配置（不包含捌预设）<br>
+                    <small>你可以添加自定义预设，或切换回默认配置</small>
+                </p>
+            </div>
+            {% endif %}
+            
+            <div class="preset-list" id="preset-list">
+                {% if preset_order|length == 0 %}
+                <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                    <p>暂无预设条目</p>
+                    <p><small>点击上方"添加自定义预设"或"导入预设JSON"来添加</small></p>
+                </div>
+                {% endif %}
+                {% for key in preset_order %}
+                {% set prompt = preset_prompts.get(key) %}
+                {% if prompt %}
+                {% set is_enabled = user_preset_config.get(key, prompt.enabled) if user_preset_config else prompt.enabled %}
+                <div class="preset-item {% if prompt.required %}preset-required{% endif %} {% if prompt.is_custom %}preset-custom{% endif %} {% if prompt.is_overridden %}preset-overridden{% endif %}" data-key="{{ key }}">
+                    <div class="preset-item-header">
+                        <label class="toggle-switch">
+                            <input type="checkbox" 
+                                   {% if prompt.required or is_enabled %}checked{% endif %}
+                                   {% if prompt.required %}disabled{% endif %}
+                                   onchange="novel.togglePreset('{{ key }}', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="preset-name">{{ prompt.name }}</span>
+                        <span class="preset-role badge-{{ prompt.role }}">{{ prompt.role }}</span>
+                        {% if prompt.is_overridden %}
+                        <span class="preset-modified-badge">已修改</span>
+                        {% endif %}
+                        {% if prompt.is_custom %}
+                        <button class="btn btn-ghost btn-xs" onclick="editCustomPreset('{{ key }}')" title="编辑">✏️</button>
+                        <button class="btn btn-ghost btn-xs" onclick="deleteCustomPreset({{ prompt.id }})" title="删除">🗑️</button>
+                        {% else %}
+                        <button class="btn btn-ghost btn-xs" onclick="editSystemPreset('{{ key }}')" title="编辑内容">✏️</button>
+                        {% if prompt.is_overridden %}
+                        <button class="btn btn-ghost btn-xs" onclick="resetSystemPreset('{{ key }}')" title="重置为默认">↩️</button>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="preset-content-preview" onclick="togglePresetContent(this)">
+                        {{ prompt.content[:100] }}...
+                        <span class="expand-hint">点击展开</span>
+                    </div>
+                    <div class="preset-content-full" style="display:none;">
+                        <pre>{{ prompt.content }}</pre>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="resetAllPresets()" style="margin-right: auto; color: #f44336;">🗑️ 一键清空</button>
+            <button class="btn btn-secondary" onclick="closePresetModal()">关闭</button>
+            <button class="btn btn-primary" onclick="novel.savePresetConfig()">保存配置</button>
+        </div>
+    </div>
+</div>
+
+<!-- Persona模态框 -->
+<div class="modal-overlay" id="persona-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">👤 我的设定 (Persona)</h3>
+            <button class="modal-close" onclick="closePersonaModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="persona-hint">设定你在故事中的角色信息，AI会根据这些信息来称呼你</p>
+            <textarea class="persona-input" id="persona-input" rows="6" placeholder="例如：
+我叫小明，22岁，是一名大学生。
+性格开朗，喜欢运动和音乐。
+目前单身，对青梅竹马有好感但不敢表白..."></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closePersonaModal()">取消</button>
+            <button class="btn btn-primary" onclick="novel.savePersona()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 角色管理模态框 -->
+<div class="modal-overlay" id="character-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title">📚 创建/导入角色</h3>
+            <button class="modal-close" onclick="closeCharacterModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <!-- 导入区域 -->
+            <div class="import-section">
+                <div class="import-header" onclick="toggleImportSection()">
+                    <span>📥 导入角色数据 (SillyTavern世界书格式)</span>
+                    <span class="import-toggle">▼</span>
+                </div>
+                <div class="import-content" id="import-content" style="display:none;">
+                    <textarea id="import-data" class="form-input" rows="4" placeholder='粘贴JSON数据，支持格式：
+{"entries":{"0":{"key":[...],"content":"...","comment":"..."},...}}'></textarea>
+                    <button class="btn btn-secondary btn-sm" onclick="novel.parseImportData()" style="margin-top:8px;">解析导入数据</button>
+                </div>
+            </div>
+            
+            <div class="character-form">
+                <div class="form-group">
+                    <label>角色名称 *</label>
+                    <input type="text" id="char-name" class="form-input" placeholder="角色名称">
+                </div>
+                <div class="form-group">
+                    <label>头像</label>
+                    <div class="avatar-upload-section">
+                        <div class="avatar-preview" id="avatar-preview">
+                            <span id="avatar-emoji">👧</span>
+                            <img id="avatar-image" src="" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                        </div>
+                        <div class="avatar-options">
+                            <input type="text" id="char-avatar" class="form-input" placeholder="emoji如👧" maxlength="4" style="width:80px;" oninput="updateAvatarPreview()">
+                            <span style="margin:0 8px; color:var(--text-muted);">或</span>
+                            <label class="btn btn-secondary btn-sm">
+                                📷 上传图片
+                                <input type="file" id="avatar-file" accept="image/*" style="display:none;" onchange="previewAvatarFile(this)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>角色描述</label>
+                    <textarea id="char-description" class="form-input" rows="3" placeholder="角色的外貌、背景等"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>性格设定</label>
+                    <textarea id="char-personality" class="form-input" rows="3" placeholder="角色的性格特点"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>场景设定</label>
+                    <textarea id="char-scenario" class="form-input" rows="2" placeholder="故事发生的背景"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>开场白</label>
+                    <textarea id="char-first-message" class="form-input" rows="3" placeholder="角色的第一句话"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>示例对话 / 世界书内容</label>
+                    <textarea id="char-example" class="form-input" rows="4" placeholder="{{user}}: 你好
+{{char}}: *微笑* 你好呀~"></textarea>
+                </div>
+                
+                <!-- 正则表达式区域 -->
+                <div class="regex-section">
+                    <div class="regex-header" onclick="toggleRegexSection()">
+                        <span>🔧 正则表达式规则 (高级)</span>
+                        <span class="regex-toggle">▼</span>
+                    </div>
+                    <div class="regex-content" id="regex-content" style="display:none;">
+                        <p class="regex-hint">使用正则表达式对AI输出进行后处理，如替换特定词汇</p>
+                        <div id="regex-rules-list"></div>
+                        <button class="btn btn-secondary btn-sm" onclick="addRegexRule()" style="margin-top:8px;">➕ 添加规则</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCharacterModal()">取消</button>
+            <button class="btn btn-ghost" onclick="novel.importCharacter()">📥 导入</button>
+            <button class="btn btn-primary" onclick="novel.saveCharacter()">保存角色</button>
+        </div>
+    </div>
+</div>
+
+<!-- 提示词预览模态框 -->
+<div class="modal-overlay" id="prompt-preview-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title">👁️ 提示词预览</h3>
+            <button class="modal-close" onclick="closePromptPreviewModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="prompt-preview-stats" id="prompt-stats">
+                <span>消息数: <strong id="msg-count">-</strong></span>
+                <span>预估Token: <strong id="token-count">-</strong></span>
+            </div>
+            <div class="prompt-preview-list" id="prompt-preview-list">
+                <p class="text-muted">请先开始一个故事以预览提示词</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closePromptPreviewModal()">关闭</button>
+            <button class="btn btn-primary" onclick="refreshPromptPreview()">🔄 刷新</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加自定义预设模态框 -->
+<div class="modal-overlay" id="add-preset-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">➕ 添加自定义预设</h3>
+            <button class="modal-close" onclick="closeAddPresetModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>预设名称 *</label>
+                <input type="text" id="new-preset-name" class="form-input" placeholder="如：我的写作风格">
+            </div>
+            <div class="form-group">
+                <label>角色类型</label>
+                <select id="new-preset-role" class="form-input">
+                    <option value="system">system (系统指令)</option>
+                    <option value="user">user (用户消息)</option>
+                    <option value="assistant">assistant (AI回复)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>预设内容 *</label>
+                <textarea id="new-preset-content" class="form-input" rows="8" placeholder="输入预设内容...
+支持变量: {{user}} {{char}}"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="new-preset-enabled" checked>
+                    默认启用
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeAddPresetModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveCustomPreset()">保存预设</button>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑系统预设模态框 -->
+<div class="modal-overlay" id="edit-system-preset-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title">✏️ 编辑预设: <span id="edit-preset-title"></span></h3>
+            <button class="modal-close" onclick="closeEditSystemPresetModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="preset-hint">修改预设内容后将覆盖默认值，可随时重置为默认</p>
+            <input type="hidden" id="edit-preset-key">
+            <div class="form-group">
+                <label>预设名称</label>
+                <input type="text" id="edit-preset-name" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>角色类型</label>
+                <select id="edit-preset-role" class="form-input">
+                    <option value="system">system (系统指令)</option>
+                    <option value="user">user (用户消息)</option>
+                    <option value="assistant">assistant (AI回复)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>预设内容</label>
+                <textarea id="edit-preset-content" class="form-input" rows="12" style="font-family: monospace;"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEditSystemPresetModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveSystemPresetOverride()">保存修改</button>
+        </div>
+    </div>
+</div>
+
+<!-- 正则表达式管理模态框 -->
+<div class="modal-overlay" id="regex-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title">🔧 正则表达式规则</h3>
+            <button class="modal-close" onclick="closeRegexModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="preset-hint">使用正则表达式对AI输出进行后处理，如替换特定词汇、格式化文本等</p>
+            
+            <div id="global-regex-rules-list"></div>
+            
+            <button class="btn btn-secondary btn-sm" onclick="addGlobalRegexRule()" style="margin-top: 12px;">➕ 添加规则</button>
+            
+            <div style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+                    💡 提示：正则规则会应用到所有AI回复。常用示例：<br>
+                    • 替换星号动作: <code>\*([^*]+)\*</code> → <code>&lt;em&gt;$1&lt;/em&gt;</code><br>
+                    • 移除括号注释: <code>\([^)]+\)</code> → (空)
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeRegexModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveGlobalRegexRules()">保存规则</button>
+        </div>
+    </div>
+</div>
+
+<!-- 保存配置文件模态框 -->
+<div class="modal-overlay" id="save-profile-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">💾 保存配置文件</h3>
+            <button class="modal-close" onclick="closeSaveProfileModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="preset-hint">将当前的预设配置保存为一个配置文件，方便以后切换使用</p>
+            <div class="form-group">
+                <label>配置文件名称 *</label>
+                <input type="text" id="profile-name" class="form-input" placeholder="如：我的RP配置">
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <textarea id="profile-description" class="form-input" rows="2" placeholder="可选的描述信息"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="profile-include-system" checked>
+                    包含系统预设（捌预设）
+                </label>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                    取消勾选将创建一个不包含任何系统预设的配置，只使用你的自定义预设
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSaveProfileModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveCurrentAsProfile()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 配置文件管理模态框 -->
+<div class="modal-overlay" id="profile-manager-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title">📂 管理配置文件</h3>
+            <button class="modal-close" onclick="closeProfileManagerModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="profile-list" style="max-height: 400px; overflow-y: auto;">
+                <p class="text-muted">加载中...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeProfileManagerModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// 小说区状态管理
+const novel = {
+    currentDialogId: null,
+    currentCharacterId: null,
+    presetConfig: {{ user_preset_config | tojson | default('{}') }},  // 从服务器加载用户级别预设配置
+    streamEnabled: true,  // 流式输出开关
+    characters: {
+        system: {{ system_characters | tojson | default('[]') }},
+        user: {{ user_characters | tojson | default('[]') }}
+    },
+    
+    // 切换流式输出
+    toggleStream(enabled) {
+        this.streamEnabled = enabled;
+        localStorage.setItem('novel_stream_enabled', enabled ? '1' : '0');
+    },
+    
+    // 选择角色
+    selectCharacter(charId) {
+        const numCharId = parseInt(charId);
+        console.log('selectCharacter called with:', numCharId, 'current:', this.currentCharacterId);
+        
+        // 如果选择的是同一个角色，不做任何操作
+        if (this.currentCharacterId === numCharId) {
+            console.log('Same character, skipping');
+            return;
+        }
+        
+        this.currentCharacterId = numCharId;
+        
+        // 更新角色选中状态
+        document.querySelectorAll('.character-item').forEach(el => {
+            el.classList.toggle('active', parseInt(el.dataset.id) === numCharId);
+        });
+        
+        // 更新头部显示
+        const char = this.getCharacterById(numCharId);
+        console.log('Found character:', char);
+        if (char) {
+            const avatarEl = document.getElementById('current-character-avatar');
+            if (char.avatar_url) {
+                avatarEl.innerHTML = `<img src="${char.avatar_url}" alt="${char.name}" style="width:24px;height:24px;border-radius:50%;">`;
+            } else {
+                avatarEl.textContent = char.avatar || '📖';
+            }
+            
+            // 如果当前没有对话，更新标题
+            if (!this.currentDialogId) {
+                document.getElementById('current-dialog-title').textContent = `准备与 ${char.name} 开始故事`;
+            }
+        }
+        
+        // 移动端自动关闭侧边栏
+        closeMobileSidebarIfNeeded();
+    },
+    
+    getCharacterById(id) {
+        const numId = parseInt(id);
+        const all = [...this.characters.system, ...this.characters.user];
+        return all.find(c => c.id === numId);
+    },
+    
+    // 获取角色头像HTML
+    getCharacterAvatarHtml(charId) {
+        const char = this.getCharacterById(charId);
+        if (!char) return '🤖';
+        if (char.avatar_url) {
+            return `<img src="${char.avatar_url}" alt="${char.name}">`;
+        }
+        return char.avatar || '🤖';
+    },
+    
+    // 创建新对话
+    async createNewDialog() {
+        console.log('createNewDialog called, currentCharacterId:', this.currentCharacterId);
+        
+        if (!this.currentCharacterId) {
+            showToast('请先选择一个角色', 'warning');
+            return;
+        }
+        
+        const char = this.getCharacterById(this.currentCharacterId);
+        console.log('Found character for new dialog:', char);
+        
+        if (!char) {
+            showToast('角色数据加载失败，请刷新页面', 'error');
+            return;
+        }
+        
+        try {
+            const requestBody = {
+                title: `与${char.name}的故事`,
+                character_id: this.currentCharacterId,
+                preset_config: this.presetConfig,
+                user_persona: document.getElementById('persona-input')?.value || ''
+            };
+            console.log('Creating dialog with:', requestBody);
+            
+            const resp = await fetch('/novel/api/dialogs', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(requestBody)
+            });
+            
+            const data = await resp.json();
+            console.log('Create dialog response:', data);
+            
+            if (data.success) {
+                this.currentDialogId = data.dialog.id;
+                this.loadDialogUI(data.dialog);
+                this.addDialogToList(data.dialog);
+                showToast('故事开始了！', 'success');
+                // 移动端自动关闭侧边栏
+                closeMobileSidebarIfNeeded();
+            } else {
+                showToast(data.message || '创建失败', 'error');
+            }
+        } catch (e) {
+            console.error('Create dialog error:', e);
+            showToast('创建失败: ' + e.message, 'error');
+        }
+    },
+    
+    // 加载对话
+    async loadDialog(dialogId) {
+        try {
+            const resp = await fetch(`/novel/api/dialogs/${dialogId}`);
+            const data = await resp.json();
+            
+            if (data.success) {
+                this.currentDialogId = dialogId;
+                this.currentCharacterId = data.dialog.character_id;
+                this.presetConfig = data.dialog.preset_config || {};
+                this.loadDialogUI(data.dialog);
+                
+                // 更新角色选中状态
+                if (data.dialog.character_id) {
+                    this.selectCharacter(data.dialog.character_id);
+                }
+                
+                // 更新persona
+                if (data.dialog.user_persona) {
+                    document.getElementById('persona-input').value = data.dialog.user_persona;
+                }
+                
+                // 更新对话列表选中状态
+                document.querySelectorAll('.dialog-item').forEach(el => {
+                    el.classList.toggle('active', parseInt(el.dataset.id) === dialogId);
+                });
+                
+                // 移动端自动关闭侧边栏
+                closeMobileSidebarIfNeeded();
+            }
+        } catch (e) {
+            showToast('加载失败', 'error');
+        }
+    },
+    
+    // 加载对话UI
+    loadDialogUI(dialog) {
+        document.getElementById('welcome-screen').style.display = 'none';
+        document.getElementById('current-dialog-title').textContent = dialog.title;
+        
+        const container = document.getElementById('messages-container');
+        container.innerHTML = '';
+        
+        if (dialog.messages && dialog.messages.length > 0) {
+            dialog.messages.forEach(msg => {
+                this.appendMessage(msg.role, msg.content);
+            });
+        }
+        
+        this.scrollToBottom();
+    },
+    
+    // 添加消息到UI
+    appendMessage(role, content) {
+        const container = document.getElementById('messages-container');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `novel-message ${role}-message`;
+        
+        const char = this.getCharacterById(this.currentCharacterId);
+        let avatarHtml;
+        
+        if (role === 'user') {
+            avatarHtml = '👤';
+        } else if (char?.avatar_url) {
+            avatarHtml = `<img src="${char.avatar_url}" alt="${char.name}">`;
+        } else {
+            avatarHtml = char?.avatar || '🤖';
+        }
+        
+        // 解析markdown
+        const parsedContent = marked.parse(content);
+        
+        msgDiv.innerHTML = `
+            <div class="message-avatar">${avatarHtml}</div>
+            <div class="message-bubble">
+                <div class="message-content">${parsedContent}</div>
+                ${role === 'assistant' ? `
+                <div class="message-actions">
+                    <button class="message-action-btn" onclick="novel.regenerate()">🔄 重新生成</button>
+                    <button class="message-action-btn" onclick="novel.copyMessage(this)">📋 复制</button>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        container.appendChild(msgDiv);
+    },
+    
+    // 发送消息
+    async sendMessage() {
+        if (!this.currentDialogId) {
+            showToast('请先开始一个故事', 'warning');
+            return;
+        }
+        
+        const input = document.getElementById('message-input');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        input.value = '';
+        this.appendMessage('user', message);
+        this.scrollToBottom();
+        
+        // 显示加载状态
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'novel-message assistant-message loading';
+        loadingDiv.innerHTML = `
+            <div class="message-avatar">${this.getCharacterAvatarHtml(this.currentCharacterId)}</div>
+            <div class="message-bubble">
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+            </div>
+        `;
+        document.getElementById('messages-container').appendChild(loadingDiv);
+        this.scrollToBottom();
+        
+        try {
+            if (this.streamEnabled) {
+                // 流式模式
+                await this.sendMessageStream(message, loadingDiv);
+            } else {
+                // 非流式模式
+                await this.sendMessageNonStream(message, loadingDiv);
+            }
+        } catch (e) {
+            loadingDiv.remove();
+            showToast('发送失败: ' + e.message, 'error');
+        }
+    },
+    
+    // 流式发送
+    async sendMessageStream(message, loadingDiv) {
+        const resp = await fetch(`/novel/api/dialogs/${this.currentDialogId}/message`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message, stream: true })
+        });
+        
+        loadingDiv.remove();
+        
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        
+        const aiMsgDiv = document.createElement('div');
+        aiMsgDiv.className = 'novel-message assistant-message';
+        aiMsgDiv.innerHTML = `
+            <div class="message-avatar">${this.getCharacterAvatarHtml(this.currentCharacterId)}</div>
+            <div class="message-bubble">
+                <div class="message-content"></div>
+            </div>
+        `;
+        document.getElementById('messages-container').appendChild(aiMsgDiv);
+        const contentDiv = aiMsgDiv.querySelector('.message-content');
+        
+        while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') continue;
+                    
+                    const text = data.replace(/\\n/g, '\n');
+                    fullContent += text;
+                    contentDiv.innerHTML = marked.parse(fullContent);
+                    this.scrollToBottom();
+                }
+            }
+        }
+        
+        this.addMessageActions(aiMsgDiv);
+    },
+    
+    // 非流式发送
+    async sendMessageNonStream(message, loadingDiv) {
+        const resp = await fetch(`/novel/api/dialogs/${this.currentDialogId}/message`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message, stream: false })
+        });
+        
+        loadingDiv.remove();
+        
+        const data = await resp.json();
+        
+        if (data.success) {
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = 'novel-message assistant-message';
+            aiMsgDiv.innerHTML = `
+                <div class="message-avatar">${this.getCharacterAvatarHtml(this.currentCharacterId)}</div>
+                <div class="message-bubble">
+                    <div class="message-content">${marked.parse(data.content)}</div>
+                </div>
+            `;
+            document.getElementById('messages-container').appendChild(aiMsgDiv);
+            this.addMessageActions(aiMsgDiv);
+            this.scrollToBottom();
+        } else {
+            throw new Error(data.message || '请求失败');
+        }
+    },
+    
+    // 添加消息操作按钮
+    addMessageActions(msgDiv) {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        actionsDiv.innerHTML = `
+            <button class="message-action-btn" onclick="novel.regenerate()">🔄 重新生成</button>
+            <button class="message-action-btn" onclick="novel.copyMessage(this)">📋 复制</button>
+        `;
+        msgDiv.querySelector('.message-bubble').appendChild(actionsDiv);
+    },
+    
+    // 重新生成
+    async regenerate() {
+        if (!this.currentDialogId) return;
+        
+        // 移除最后一条AI消息
+        const messages = document.querySelectorAll('.novel-message.assistant-message');
+        if (messages.length > 0) {
+            messages[messages.length - 1].remove();
+        }
+        
+        // 显示加载状态
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'novel-message assistant-message loading';
+        loadingDiv.innerHTML = `
+            <div class="message-avatar">${this.getCharacterAvatarHtml(this.currentCharacterId)}</div>
+            <div class="message-bubble">
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+            </div>
+        `;
+        document.getElementById('messages-container').appendChild(loadingDiv);
+        
+        try {
+            if (this.streamEnabled) {
+                // 流式模式
+                const resp = await fetch(`/novel/api/dialogs/${this.currentDialogId}/message`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ regenerate: true, message: '', stream: true })
+                });
+                
+                loadingDiv.remove();
+                
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                
+                const aiMsgDiv = document.createElement('div');
+                aiMsgDiv.className = 'novel-message assistant-message';
+                aiMsgDiv.innerHTML = `
+                    <div class="message-avatar">${this.getCharacterAvatarHtml(this.currentCharacterId)}</div>
+                    <div class="message-bubble">
+                        <div class="message-content"></div>
+                    </div>
+                `;
+                document.getElementById('messages-container').appendChild(aiMsgDiv);
+                const contentDiv = aiMsgDiv.querySelector('.message-content');
+                
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            
+                            const text = data.replace(/\\n/g, '\n');
+                            fullContent += text;
+                            contentDiv.innerHTML = marked.parse(fullContent);
+                            this.scrollToBottom();
+                        }
+                    }
+                }
+                
+                this.addMessageActions(aiMsgDiv);
+            } else {
+                // 非流式模式
+                const resp = await fetch(`/novel/api/dialogs/${this.currentDialogId}/message`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ regenerate: true, message: '', stream: false })
+                });
+                
+                loadingDiv.remove();
+                
+                const data = await resp.json();
+                if (data.success) {
+                    const aiMsgDiv = document.createElement('div');
+                    aiMsgDiv.className = 'novel-message assistant-message';
+                    aiMsgDiv.innerHTML = `
+                        <div class="message-avatar">${this.getCharacterAvatarHtml(this.currentCharacterId)}</div>
+                        <div class="message-bubble">
+                            <div class="message-content">${marked.parse(data.content)}</div>
+                        </div>
+                    `;
+                    document.getElementById('messages-container').appendChild(aiMsgDiv);
+                    this.addMessageActions(aiMsgDiv);
+                    this.scrollToBottom();
+                } else {
+                    throw new Error(data.message || '重新生成失败');
+                }
+            }
+        } catch (e) {
+            loadingDiv.remove();
+            showToast('重新生成失败: ' + e.message, 'error');
+        }
+    },
+    
+    // 删除对话
+    async deleteDialog(dialogId) {
+        if (!confirm('确定要删除这个故事吗？')) return;
+        
+        try {
+            const resp = await fetch(`/novel/api/dialogs/${dialogId}/delete`, {
+                method: 'POST'
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                document.querySelector(`.dialog-item[data-id="${dialogId}"]`)?.remove();
+                if (this.currentDialogId === dialogId) {
+                    this.currentDialogId = null;
+                    document.getElementById('messages-container').innerHTML = '';
+                    document.getElementById('welcome-screen').style.display = 'flex';
+                }
+                showToast('已删除', 'success');
+            }
+        } catch (e) {
+            showToast('删除失败', 'error');
+        }
+    },
+    
+    // 切换预设
+    togglePreset(key, enabled) {
+        this.presetConfig[key] = enabled;
+    },
+    
+    // 保存预设配置（用户级别，不依赖故事）
+    async savePresetConfig() {
+        try {
+            const resp = await fetch('/novel/api/settings/preset-config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ preset_config: this.presetConfig })
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                showToast('预设已保存', 'success');
+                closePresetModal();
+            }
+        } catch (e) {
+            showToast('保存失败', 'error');
+        }
+    },
+    
+    // 保存Persona（用户级别，不依赖故事）
+    async savePersona() {
+        const persona = document.getElementById('persona-input').value;
+        
+        try {
+            const resp = await fetch('/novel/api/settings/persona', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_persona: persona })
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                showToast('Persona已保存', 'success');
+                closePersonaModal();
+            }
+        } catch (e) {
+            showToast('保存失败', 'error');
+        }
+    },
+    
+    // 保存角色
+    async saveCharacter() {
+        const name = document.getElementById('char-name').value.trim();
+        if (!name) {
+            showToast('请输入角色名称', 'warning');
+            return;
+        }
+        
+        try {
+            const resp = await fetch('/novel/api/characters', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name,
+                    avatar: document.getElementById('char-avatar').value || '👤',
+                    description: document.getElementById('char-description').value,
+                    personality: document.getElementById('char-personality').value,
+                    scenario: document.getElementById('char-scenario').value,
+                    first_message: document.getElementById('char-first-message').value,
+                    example_dialogs: document.getElementById('char-example').value
+                })
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                const charId = data.character.id;
+                
+                // 上传头像图片（如果有）
+                if (this.currentAvatarFile) {
+                    const formData = new FormData();
+                    formData.append('avatar', this.currentAvatarFile);
+                    
+                    const avatarResp = await fetch(`/novel/api/characters/${charId}/avatar`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const avatarData = await avatarResp.json();
+                    if (avatarData.success) {
+                        data.character.avatar_url = avatarData.avatar_url;
+                    }
+                }
+                
+                // 保存正则规则
+                const regexRules = getRegexRules();
+                if (regexRules.length > 0) {
+                    await fetch(`/novel/api/characters/${charId}/regex`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ regex_rules: regexRules })
+                    });
+                }
+                
+                this.characters.user.push(data.character);
+                this.addCharacterToList(data.character);
+                showToast('角色已创建', 'success');
+                clearCharacterForm();
+                closeCharacterModal();
+            } else {
+                showToast(data.message || '创建失败', 'error');
+            }
+        } catch (e) {
+            showToast('创建失败', 'error');
+        }
+    },
+    
+    currentAvatarFile: null,
+    
+    addCharacterToList(char) {
+        const list = document.getElementById('character-list');
+        const div = document.createElement('div');
+        div.className = 'character-item';
+        div.dataset.id = char.id;
+        div.onclick = () => this.selectCharacter(char.id);
+        
+        const avatarContent = char.avatar_url 
+            ? `<img src="${char.avatar_url}" alt="${char.name}">`
+            : char.avatar;
+        
+        div.innerHTML = `
+            <div class="character-avatar">${avatarContent}</div>
+            <div class="character-info">
+                <div class="character-name">${char.name}</div>
+                <div class="character-desc">${(char.description || '').substring(0, 30)}...</div>
+            </div>
+        `;
+        list.appendChild(div);
+    },
+    
+    addDialogToList(dialog) {
+        const list = document.getElementById('dialog-list');
+        const div = document.createElement('div');
+        div.className = 'dialog-item active';
+        div.dataset.id = dialog.id;
+        div.onclick = () => this.loadDialog(dialog.id);
+        div.innerHTML = `
+            <span class="dialog-item-icon">📖</span>
+            <div class="dialog-item-content">
+                <div class="dialog-item-title">${dialog.title}</div>
+                <div class="dialog-item-time">刚刚</div>
+            </div>
+            <button class="dialog-item-delete" onclick="event.stopPropagation(); novel.deleteDialog(${dialog.id})">🗑️</button>
+        `;
+        
+        // 移除其他active
+        list.querySelectorAll('.dialog-item').forEach(el => el.classList.remove('active'));
+        
+        // 插入到标题后面
+        const title = list.querySelector('.dialog-section-title');
+        if (title) {
+            title.after(div);
+        } else {
+            list.prepend(div);
+        }
+    },
+    
+    copyMessage(btn) {
+        const content = btn.closest('.message-bubble').querySelector('.message-content').innerText;
+        navigator.clipboard.writeText(content);
+        showToast('已复制', 'success');
+    },
+    
+    scrollToBottom() {
+        const container = document.getElementById('messages-container');
+        container.scrollTop = container.scrollHeight;
+    },
+    
+    // 解析导入数据
+    parseImportData() {
+        const importText = document.getElementById('import-data').value.trim();
+        if (!importText) {
+            showToast('请粘贴导入数据', 'warning');
+            return;
+        }
+        
+        try {
+            const data = JSON.parse(importText);
+            let entries = data.entries || data;
+            
+            // 提取示例对话 - 每个条目独立分隔
+            let dialogParts = [];
+            for (const key in entries) {
+                const entry = entries[key];
+                if (entry && entry.content) {
+                    let entryText = '';
+                    
+                    // 添加条目标题
+                    if (entry.comment) {
+                        entryText = `【${entry.comment}】\n`;
+                    } else if (entry.key && Array.isArray(entry.key) && entry.key.length > 0) {
+                        entryText = `【${entry.key.slice(0, 3).join(', ')}】\n`;
+                    }
+                    
+                    entryText += entry.content.trim();
+                    dialogParts.push(entryText);
+                }
+            }
+            
+            if (dialogParts.length > 0) {
+                // 使用分隔线分隔每个条目
+                document.getElementById('char-example').value = dialogParts.join('\n\n---\n\n');
+                showToast(`已解析 ${Object.keys(entries).length} 条世界书条目`, 'success');
+            } else {
+                showToast('未找到有效的世界书条目', 'warning');
+            }
+        } catch (e) {
+            showToast('JSON解析失败: ' + e.message, 'error');
+        }
+    },
+    
+    // 导入角色
+    async importCharacter() {
+        const name = document.getElementById('char-name').value.trim();
+        if (!name) {
+            showToast('请输入角色名称', 'warning');
+            return;
+        }
+        
+        const importText = document.getElementById('import-data').value.trim();
+        let entriesData = null;
+        
+        if (importText) {
+            try {
+                entriesData = JSON.parse(importText);
+            } catch (e) {
+                showToast('导入数据JSON格式错误', 'error');
+                return;
+            }
+        }
+        
+        try {
+            const resp = await fetch('/novel/api/characters/import', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name,
+                    avatar: document.getElementById('char-avatar').value || '👤',
+                    description: document.getElementById('char-description').value,
+                    personality: document.getElementById('char-personality').value,
+                    scenario: document.getElementById('char-scenario').value,
+                    first_message: document.getElementById('char-first-message').value,
+                    example_dialogs: document.getElementById('char-example').value,
+                    entries: entriesData
+                })
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                this.characters.user.push(data.character);
+                this.addCharacterToList(data.character);
+                showToast(data.message || '角色导入成功', 'success');
+                closeCharacterModal();
+                clearCharacterForm();
+            } else {
+                showToast(data.message || '导入失败', 'error');
+            }
+        } catch (e) {
+            showToast('导入失败: ' + e.message, 'error');
+        }
+    }
+};
+
+// 清空角色表单
+function clearCharacterForm() {
+    document.getElementById('char-name').value = '';
+    document.getElementById('char-avatar').value = '';
+    document.getElementById('char-description').value = '';
+    document.getElementById('char-personality').value = '';
+    document.getElementById('char-scenario').value = '';
+    document.getElementById('char-first-message').value = '';
+    document.getElementById('char-example').value = '';
+    document.getElementById('import-data').value = '';
+    document.getElementById('avatar-emoji').textContent = '👧';
+    document.getElementById('avatar-image').style.display = 'none';
+    document.getElementById('avatar-emoji').style.display = 'block';
+    document.getElementById('regex-rules-list').innerHTML = '';
+    novel.currentAvatarFile = null;
+}
+
+// 切换导入区域
+function toggleImportSection() {
+    const content = document.getElementById('import-content');
+    const isHidden = content.style.display === 'none';
+    content.style.display = isHidden ? 'block' : 'none';
+}
+
+// 切换正则区域
+function toggleRegexSection() {
+    const content = document.getElementById('regex-content');
+    const isHidden = content.style.display === 'none';
+    content.style.display = isHidden ? 'block' : 'none';
+}
+
+// 头像预览
+function updateAvatarPreview() {
+    const emoji = document.getElementById('char-avatar').value;
+    if (emoji) {
+        document.getElementById('avatar-emoji').textContent = emoji;
+        document.getElementById('avatar-emoji').style.display = 'block';
+        document.getElementById('avatar-image').style.display = 'none';
+    }
+}
+
+function previewAvatarFile(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('avatar-image').src = e.target.result;
+            document.getElementById('avatar-image').style.display = 'block';
+            document.getElementById('avatar-emoji').style.display = 'none';
+            novel.currentAvatarFile = input.files[0];
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 正则规则管理
+let regexRuleCount = 0;
+
+function addRegexRule(rule = null) {
+    const list = document.getElementById('regex-rules-list');
+    const id = regexRuleCount++;
+    
+    const div = document.createElement('div');
+    div.className = 'regex-rule-item';
+    div.id = `regex-rule-${id}`;
+    div.innerHTML = `
+        <div class="regex-rule-header">
+            <input type="text" class="form-input" placeholder="规则名称" value="${rule?.name || ''}" style="flex:1;">
+            <select class="form-input" style="width:100px;">
+                <option value="output" ${rule?.apply_to === 'output' ? 'selected' : ''}>输出</option>
+                <option value="input" ${rule?.apply_to === 'input' ? 'selected' : ''}>输入</option>
+                <option value="both" ${rule?.apply_to === 'both' ? 'selected' : ''}>两者</option>
+            </select>
+            <label class="toggle-switch" style="margin-left:8px;">
+                <input type="checkbox" ${rule?.enabled !== false ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+            </label>
+            <button class="btn btn-ghost btn-xs" onclick="removeRegexRule(${id})">🗑️</button>
+        </div>
+        <div class="regex-rule-inputs">
+            <input type="text" class="form-input" placeholder="正则表达式 (如: \\*.*?\\*)" value="${rule?.pattern || ''}">
+            <input type="text" class="form-input" placeholder="替换为 (如: <em>$&</em>)" value="${rule?.replacement || ''}">
+        </div>
+        <button class="btn btn-ghost btn-xs" onclick="testRegexRule(${id})" style="margin-top:4px;">🧪 测试</button>
+    `;
+    list.appendChild(div);
+}
+
+function removeRegexRule(id) {
+    document.getElementById(`regex-rule-${id}`)?.remove();
+}
+
+function getRegexRules() {
+    const rules = [];
+    document.querySelectorAll('.regex-rule-item').forEach(item => {
+        const inputs = item.querySelectorAll('input[type="text"]');
+        const select = item.querySelector('select');
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        
+        if (inputs[1]?.value) {  // pattern不为空
+            rules.push({
+                name: inputs[0]?.value || '未命名',
+                pattern: inputs[1]?.value || '',
+                replacement: inputs[2]?.value || '',
+                apply_to: select?.value || 'output',
+                enabled: checkbox?.checked !== false
+            });
+        }
+    });
+    return rules;
+}
+
+async function testRegexRule(id) {
+    const item = document.getElementById(`regex-rule-${id}`);
+    const inputs = item.querySelectorAll('input[type="text"]');
+    const pattern = inputs[1]?.value;
+    const replacement = inputs[2]?.value || '';
+    
+    const testText = prompt('输入测试文本:');
+    if (!testText) return;
+    
+    try {
+        const resp = await fetch('/novel/api/regex/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ pattern, replacement, test_text: testText })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`匹配数: ${data.match_count}\n结果: ${data.result}`);
+        } else {
+            alert('错误: ' + data.message);
+        }
+    } catch (e) {
+        alert('测试失败');
+    }
+}
+
+// 提示词预览
+async function openPromptPreviewModal() {
+    document.getElementById('prompt-preview-modal').classList.add('active');
+    await refreshPromptPreview();
+}
+
+function closePromptPreviewModal() {
+    document.getElementById('prompt-preview-modal').classList.remove('active');
+}
+
+async function refreshPromptPreview() {
+    if (!novel.currentDialogId) {
+        document.getElementById('prompt-preview-list').innerHTML = '<p class="text-muted">请先开始一个故事以预览提示词</p>';
+        return;
+    }
+    
+    try {
+        const resp = await fetch(`/novel/api/dialogs/${novel.currentDialogId}/preview`);
+        const data = await resp.json();
+        
+        if (data.success) {
+            document.getElementById('msg-count').textContent = data.message_count;
+            document.getElementById('token-count').textContent = data.estimated_tokens;
+            
+            const list = document.getElementById('prompt-preview-list');
+            list.innerHTML = data.messages.map(msg => `
+                <div class="prompt-message-item">
+                    <span class="prompt-message-role role-${msg.role}">${msg.role}</span>
+                    <div class="prompt-message-content">${escapeHtml(msg.content)}</div>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        showToast('加载预览失败', 'error');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 自定义预设管理
+function openAddPresetModal() {
+    document.getElementById('new-preset-name').value = '';
+    document.getElementById('new-preset-content').value = '';
+    document.getElementById('new-preset-role').value = 'system';
+    document.getElementById('new-preset-enabled').checked = true;
+    document.getElementById('add-preset-modal').classList.add('active');
+}
+
+function closeAddPresetModal() {
+    document.getElementById('add-preset-modal').classList.remove('active');
+}
+
+async function saveCustomPreset() {
+    const name = document.getElementById('new-preset-name').value.trim();
+    const content = document.getElementById('new-preset-content').value.trim();
+    const role = document.getElementById('new-preset-role').value;
+    const enabled = document.getElementById('new-preset-enabled').checked;
+    
+    if (!name || !content) {
+        showToast('请填写名称和内容', 'warning');
+        return;
+    }
+    
+    try {
+        const resp = await fetch('/novel/api/presets/user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, content, role, enabled })
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('预设已创建', 'success');
+            closeAddPresetModal();
+            // 刷新页面以显示新预设
+            location.reload();
+        } else {
+            showToast(data.message || '创建失败', 'error');
+        }
+    } catch (e) {
+        showToast('创建失败', 'error');
+    }
+}
+
+async function deleteCustomPreset(presetId) {
+    if (!confirm('确定要删除这个预设吗？')) return;
+    
+    try {
+        const resp = await fetch(`/novel/api/presets/user/${presetId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('预设已删除', 'success');
+            location.reload();
+        }
+    } catch (e) {
+        showToast('删除失败', 'error');
+    }
+}
+
+// 编辑系统预设
+const systemPresets = {{ preset_prompts | tojson }};
+
+function editSystemPreset(key) {
+    const preset = systemPresets[key];
+    if (!preset) return;
+    
+    document.getElementById('edit-preset-key').value = key;
+    document.getElementById('edit-preset-title').textContent = preset.name;
+    document.getElementById('edit-preset-name').value = preset.name;
+    document.getElementById('edit-preset-role').value = preset.role;
+    document.getElementById('edit-preset-content').value = preset.content;
+    
+    document.getElementById('edit-system-preset-modal').classList.add('active');
+}
+
+function closeEditSystemPresetModal() {
+    document.getElementById('edit-system-preset-modal').classList.remove('active');
+}
+
+async function saveSystemPresetOverride() {
+    const key = document.getElementById('edit-preset-key').value;
+    const name = document.getElementById('edit-preset-name').value.trim();
+    const role = document.getElementById('edit-preset-role').value;
+    const content = document.getElementById('edit-preset-content').value.trim();
+    
+    if (!content) {
+        showToast('内容不能为空', 'warning');
+        return;
+    }
+    
+    try {
+        const resp = await fetch('/novel/api/presets/override', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ key, name, role, content })
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast(data.message || '预设已保存', 'success');
+            closeEditSystemPresetModal();
+            location.reload();
+        } else {
+            showToast(data.message || '保存失败', 'error');
+        }
+    } catch (e) {
+        showToast('保存失败', 'error');
+    }
+}
+
+async function resetSystemPreset(key) {
+    if (!confirm('确定要重置为默认值吗？你的修改将被删除。')) return;
+    
+    try {
+        const resp = await fetch(`/novel/api/presets/override/${key}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('已重置为默认值', 'success');
+            location.reload();
+        }
+    } catch (e) {
+        showToast('重置失败', 'error');
+    }
+}
+
+// 导入预设JSON文件（支持SillyTavern格式）
+function importPresetFile(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = async function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            await parseAndImportPresets(data, file.name);
+        } catch (err) {
+            showToast('JSON解析失败: ' + err.message, 'error');
+        }
+        input.value = '';  // 清空以便再次选择同一文件
+    };
+    
+    reader.readAsText(file);
+}
+
+// 解析并导入预设
+async function parseAndImportPresets(data, filename) {
+    let prompts = [];
+    
+    // 支持SillyTavern格式（有prompts数组）
+    if (data.prompts && Array.isArray(data.prompts)) {
+        // 先记录原始索引，用于保持顺序
+        const withIndex = data.prompts.map((p, idx) => ({...p, _originalIndex: idx}));
+        
+        // 过滤：排除marker类型和没有content的条目
+        prompts = withIndex.filter(p => 
+            p.content &&           // 必须有内容
+            !p.marker &&           // 排除marker类型（隐藏条目）
+            p.name                 // 必须有名称
+        );
+        
+        // 排序：优先按injection_order，其次按原始数组顺序
+        prompts.sort((a, b) => {
+            const orderA = typeof a.injection_order === 'number' ? a.injection_order : 999;
+            const orderB = typeof b.injection_order === 'number' ? b.injection_order : 999;
+            if (orderA !== orderB) return orderA - orderB;
+            return a._originalIndex - b._originalIndex;
+        });
+    } 
+    // 支持直接的预设数组
+    else if (Array.isArray(data)) {
+        prompts = data.filter(p => p.content && p.name && !p.marker);
+    }
+    // 支持单个预设对象
+    else if (data.content && data.name && !data.marker) {
+        prompts = [data];
+    }
+    
+    if (prompts.length === 0) {
+        showToast('未找到有效的预设条目', 'warning');
+        return;
+    }
+    
+    // 显示导入预览（保持排序后的顺序）
+    const previewHtml = prompts.map((p, i) => `
+        <div class="import-preview-item">
+            <label class="checkbox-label">
+                <input type="checkbox" checked data-index="${i}">
+                <span class="preset-role badge-${p.role || 'system'}">${p.role || 'system'}</span>
+                <span>${p.name}</span>
+                ${typeof p.injection_order === 'number' ? `<small style="color:var(--text-muted);margin-left:4px;">(${p.injection_order})</small>` : ''}
+            </label>
+        </div>
+    `).join('');
+    
+    // 创建预览模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.id = 'import-preview-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">📥 导入预设预览</h3>
+                <button class="modal-close" onclick="closeImportPreviewModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="preset-hint">从 ${filename} 中发现 ${prompts.length} 个预设条目，选择要导入的：</p>
+                <div class="import-preview-list" style="max-height: 300px; overflow-y: auto;">
+                    ${previewHtml}
+                </div>
+                <div style="margin-top: 12px;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="import-select-all" checked onchange="toggleImportSelectAll(this.checked)">
+                        全选/取消全选
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportPreviewModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmImportPresets()">导入选中</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 保存预设数据供确认时使用
+    window._pendingImportPresets = prompts;
+}
+
+function closeImportPreviewModal() {
+    document.getElementById('import-preview-modal')?.remove();
+    window._pendingImportPresets = null;
+}
+
+function toggleImportSelectAll(checked) {
+    document.querySelectorAll('#import-preview-modal input[data-index]').forEach(cb => {
+        cb.checked = checked;
+    });
+}
+
+async function confirmImportPresets() {
+    const prompts = window._pendingImportPresets;
+    if (!prompts) return;
+    
+    // 获取选中的索引（保持排序后的顺序）
+    const selectedIndexes = [];
+    document.querySelectorAll('#import-preview-modal input[data-index]:checked').forEach(cb => {
+        selectedIndexes.push(parseInt(cb.dataset.index));
+    });
+    
+    if (selectedIndexes.length === 0) {
+        showToast('请至少选择一个预设', 'warning');
+        return;
+    }
+    
+    // 按顺序排列选中的索引
+    selectedIndexes.sort((a, b) => a - b);
+    
+    // 批量导入，保持顺序
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < selectedIndexes.length; i++) {
+        const idx = selectedIndexes[i];
+        const p = prompts[idx];
+        try {
+            const resp = await fetch('/novel/api/presets/user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: p.name,
+                    role: p.role || 'system',
+                    content: p.content,
+                    enabled: p.enabled !== false,
+                    order_index: i  // 按导入顺序设置order_index
+                })
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch (e) {
+            failCount++;
+        }
+    }
+    
+    closeImportPreviewModal();
+    
+    if (successCount > 0) {
+        showToast(`成功导入 ${successCount} 个预设${failCount > 0 ? `，${failCount} 个失败` : ''}`, 'success');
+        location.reload();
+    } else {
+        showToast('导入失败', 'error');
+    }
+}
+
+// 一键清空所有预设
+async function resetAllPresets() {
+    if (!confirm('确定要清空所有预设配置吗？\n\n这将：\n• 重置所有预设开关为默认状态\n• 删除所有自定义预设\n• 重置所有修改过的系统预设\n\n此操作不可撤销！')) {
+        return;
+    }
+    
+    try {
+        const resp = await fetch('/novel/api/settings/reset-all', {
+            method: 'POST'
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('所有预设已重置为默认', 'success');
+            location.reload();
+        } else {
+            showToast(data.message || '重置失败', 'error');
+        }
+    } catch (e) {
+        showToast('重置失败', 'error');
+    }
+}
+
+// 导出用户预设
+async function exportUserPresets() {
+    try {
+        const resp = await fetch('/novel/api/presets/user');
+        const data = await resp.json();
+        
+        if (!data.success || !data.presets || data.presets.length === 0) {
+            showToast('没有可导出的自定义预设', 'warning');
+            return;
+        }
+        
+        // 转换为SillyTavern兼容格式
+        const exportData = {
+            prompts: data.presets.map(p => ({
+                name: p.name,
+                role: p.role,
+                content: p.content,
+                identifier: p.key,
+                enabled: p.enabled,
+                system_prompt: false,
+                marker: false
+            }))
+        };
+        
+        // 下载文件
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `novel_presets_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showToast('预设已导出', 'success');
+    } catch (e) {
+        showToast('导出失败', 'error');
+    }
+}
+
+// 模态框函数
+function openPresetModal() {
+    document.getElementById('preset-modal').classList.add('active');
+}
+function closePresetModal() {
+    document.getElementById('preset-modal').classList.remove('active');
+}
+function openPersonaModal() {
+    document.getElementById('persona-modal').classList.add('active');
+}
+function closePersonaModal() {
+    document.getElementById('persona-modal').classList.remove('active');
+}
+function openCharacterModal() {
+    document.getElementById('character-modal').classList.add('active');
+}
+function closeCharacterModal() {
+    document.getElementById('character-modal').classList.remove('active');
+}
+
+// 正则表达式模态框
+function openRegexModal() {
+    document.getElementById('regex-modal').classList.add('active');
+    loadGlobalRegexRules();
+}
+function closeRegexModal() {
+    document.getElementById('regex-modal').classList.remove('active');
+}
+
+// 全局正则规则管理
+let globalRegexRuleCount = 0;
+
+async function loadGlobalRegexRules() {
+    const list = document.getElementById('global-regex-rules-list');
+    list.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">加载中...</p>';
+    globalRegexRuleCount = 0;
+    
+    try {
+        const resp = await fetch('/novel/api/settings/regex-rules');
+        const data = await resp.json();
+        
+        const rules = data.success ? data.regex_rules : [];
+        
+        list.innerHTML = '';
+        
+        if (rules.length === 0) {
+            list.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">暂无正则规则，点击下方按钮添加</p>';
+        } else {
+            rules.forEach(rule => addGlobalRegexRule(rule));
+        }
+    } catch (e) {
+        // 如果API失败，尝试从localStorage加载（兼容旧数据）
+        const saved = localStorage.getItem('novel_global_regex_rules');
+        const rules = saved ? JSON.parse(saved) : [];
+        
+        list.innerHTML = '';
+        
+        if (rules.length === 0) {
+            list.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">暂无正则规则，点击下方按钮添加</p>';
+        } else {
+            rules.forEach(rule => addGlobalRegexRule(rule));
+        }
+    }
+}
+
+function addGlobalRegexRule(rule = null) {
+    const list = document.getElementById('global-regex-rules-list');
+    
+    // 移除空提示
+    const emptyHint = list.querySelector('.text-muted');
+    if (emptyHint) emptyHint.remove();
+    
+    const id = globalRegexRuleCount++;
+    
+    const div = document.createElement('div');
+    div.className = 'regex-rule-item';
+    div.id = `global-regex-rule-${id}`;
+    div.innerHTML = `
+        <div class="regex-rule-header">
+            <input type="text" class="form-input" placeholder="规则名称" value="${rule?.name || ''}" style="flex:1;">
+            <select class="form-input" style="width:100px;">
+                <option value="output" ${rule?.apply_to === 'output' ? 'selected' : ''}>输出</option>
+                <option value="input" ${rule?.apply_to === 'input' ? 'selected' : ''}>输入</option>
+                <option value="both" ${rule?.apply_to === 'both' ? 'selected' : ''}>两者</option>
+            </select>
+            <label class="toggle-switch" style="margin-left:8px;">
+                <input type="checkbox" ${rule?.enabled !== false ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+            </label>
+            <button class="btn btn-ghost btn-xs" onclick="removeGlobalRegexRule(${id})">🗑️</button>
+        </div>
+        <div class="regex-rule-inputs">
+            <input type="text" class="form-input" placeholder="正则表达式 (如: \\*.*?\\*)" value="${rule?.pattern || ''}">
+            <input type="text" class="form-input" placeholder="替换为 (如: <em>$1</em>)" value="${rule?.replacement || ''}">
+        </div>
+    `;
+    list.appendChild(div);
+}
+
+function removeGlobalRegexRule(id) {
+    document.getElementById(`global-regex-rule-${id}`)?.remove();
+    
+    // 如果没有规则了，显示空提示
+    const list = document.getElementById('global-regex-rules-list');
+    if (list.children.length === 0) {
+        list.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">暂无正则规则，点击下方按钮添加</p>';
+    }
+}
+
+function getGlobalRegexRules() {
+    const rules = [];
+    document.querySelectorAll('#global-regex-rules-list .regex-rule-item').forEach(item => {
+        const inputs = item.querySelectorAll('input[type="text"]');
+        const select = item.querySelector('select');
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        
+        if (inputs[1]?.value) {  // pattern不为空
+            rules.push({
+                name: inputs[0]?.value || '未命名',
+                pattern: inputs[1]?.value || '',
+                replacement: inputs[2]?.value || '',
+                apply_to: select?.value || 'output',
+                enabled: checkbox?.checked !== false
+            });
+        }
+    });
+    return rules;
+}
+
+async function saveGlobalRegexRules() {
+    const rules = getGlobalRegexRules();
+    
+    try {
+        const resp = await fetch('/novel/api/settings/regex-rules', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ regex_rules: rules })
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            // 同时保存到localStorage作为备份
+            localStorage.setItem('novel_global_regex_rules', JSON.stringify(rules));
+            showToast('正则规则已保存', 'success');
+            closeRegexModal();
+        } else {
+            showToast(data.message || '保存失败', 'error');
+        }
+    } catch (e) {
+        // 如果API失败，保存到localStorage
+        localStorage.setItem('novel_global_regex_rules', JSON.stringify(rules));
+        showToast('正则规则已保存（本地）', 'success');
+        closeRegexModal();
+    }
+}
+
+// 预设配置文件管理
+function openSaveProfileModal() {
+    document.getElementById('profile-name').value = '';
+    document.getElementById('profile-description').value = '';
+    document.getElementById('profile-include-system').checked = true;
+    document.getElementById('save-profile-modal').classList.add('active');
+}
+function closeSaveProfileModal() {
+    document.getElementById('save-profile-modal').classList.remove('active');
+}
+
+async function saveCurrentAsProfile() {
+    const name = document.getElementById('profile-name').value.trim();
+    if (!name) {
+        showToast('请输入配置文件名称', 'warning');
+        return;
+    }
+    
+    const description = document.getElementById('profile-description').value;
+    const includeSystem = document.getElementById('profile-include-system').checked;
+    
+    try {
+        const resp = await fetch('/novel/api/profiles/save-current', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name,
+                description,
+                include_system_presets: includeSystem
+            })
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('配置文件已保存', 'success');
+            closeSaveProfileModal();
+            // 刷新页面以更新配置文件列表
+            location.reload();
+        } else {
+            showToast(data.message || '保存失败', 'error');
+        }
+    } catch (e) {
+        showToast('保存失败', 'error');
+    }
+}
+
+async function createEmptyProfile() {
+    const name = prompt('请输入新配置文件名称:', '我的自定义预设');
+    if (!name) return;
+    
+    if (!confirm('创建空白配置将清空所有系统预设（捌预设），只保留你之后添加的自定义预设。\n\n确定要创建吗？')) {
+        return;
+    }
+    
+    try {
+        const resp = await fetch('/novel/api/profiles/new-empty', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name })
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('空白配置已创建并激活', 'success');
+            location.reload();
+        } else {
+            showToast(data.message || '创建失败', 'error');
+        }
+    } catch (e) {
+        showToast('创建失败', 'error');
+    }
+}
+
+async function switchPresetProfile(profileId) {
+    // 空字符串或null/undefined都视为切换回默认
+    if (profileId === '' || profileId === null || profileId === undefined) {
+        // 切换回默认配置（捌预设）
+        try {
+            const resp = await fetch('/novel/api/settings/reset-to-default', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await resp.json();
+            if (data.success) {
+                showToast('已切换到默认配置', 'success');
+                location.reload();
+            } else {
+                showToast(data.message || '切换失败', 'error');
+            }
+        } catch (e) {
+            console.error('Reset to default error:', e);
+            showToast('切换失败: ' + e.message, 'error');
+        }
+        return;
+    }
+    
+    try {
+        const resp = await fetch(`/novel/api/profiles/${profileId}/activate`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast(data.message || '配置已切换', 'success');
+            location.reload();
+        } else {
+            showToast(data.message || '切换失败', 'error');
+        }
+    } catch (e) {
+        console.error('Activate profile error:', e);
+        showToast('切换失败: ' + e.message, 'error');
+    }
+}
+
+function openProfileManagerModal() {
+    document.getElementById('profile-manager-modal').classList.add('active');
+    loadProfileList();
+}
+function closeProfileManagerModal() {
+    document.getElementById('profile-manager-modal').classList.remove('active');
+}
+
+async function loadProfileList() {
+    const list = document.getElementById('profile-list');
+    
+    try {
+        const resp = await fetch('/novel/api/profiles');
+        const data = await resp.json();
+        
+        if (!data.success || !data.profiles || data.profiles.length === 0) {
+            list.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">暂无保存的配置文件</p>';
+            return;
+        }
+        
+        list.innerHTML = data.profiles.map(p => `
+            <div class="preset-item" style="margin-bottom: 8px;">
+                <div class="preset-item-header">
+                    <span class="preset-name" style="flex: 1;">
+                        ${p.name}
+                        ${!p.include_system_presets ? '<span class="preset-modified-badge">自定义</span>' : ''}
+                        ${p.id === data.current_profile_id ? '<span style="color: var(--primary-color);">✓ 当前</span>' : ''}
+                    </span>
+                    <button class="btn btn-ghost btn-xs" onclick="activateProfile(${p.id})" title="使用此配置">📌 使用</button>
+                    <button class="btn btn-ghost btn-xs" onclick="deleteProfile(${p.id})" title="删除" style="color: #f44336;">🗑️</button>
+                </div>
+                ${p.description ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">${p.description}</div>` : ''}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    创建于: ${p.created_at ? new Date(p.created_at).toLocaleDateString() : '未知'}
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">加载失败</p>';
+    }
+}
+
+async function activateProfile(profileId) {
+    await switchPresetProfile(profileId);
+}
+
+async function deleteProfile(profileId) {
+    if (!confirm('确定要删除这个配置文件吗？')) return;
+    
+    try {
+        const resp = await fetch(`/novel/api/profiles/${profileId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            showToast('配置文件已删除', 'success');
+            loadProfileList();
+            // 更新下拉框
+            const option = document.querySelector(`#preset-profile-select option[value="${profileId}"]`);
+            if (option) option.remove();
+        } else {
+            showToast(data.message || '删除失败', 'error');
+        }
+    } catch (e) {
+        showToast('删除失败', 'error');
+    }
+}
+
+function togglePresetContent(el) {
+    const full = el.nextElementSibling;
+    const isHidden = full.style.display === 'none';
+    full.style.display = isHidden ? 'block' : 'none';
+    el.style.display = isHidden ? 'none' : 'block';
+}
+
+// Toast提示
+function showToast(msg, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// 移动端侧边栏切换
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('novel-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    sidebar.classList.toggle('mobile-open');
+    overlay.classList.toggle('active');
+    
+    // 防止背景滚动
+    document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
+}
+
+// 在移动端选择角色或对话后自动关闭侧边栏
+function closeMobileSidebarIfNeeded() {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('novel-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// 输入框回车发送
+document.getElementById('message-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        novel.sendMessage();
+    }
+});
+
+// 自动调整输入框高度
+document.getElementById('message-input').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+});
+
+// 恢复流式开关状态
+(function() {
+    const saved = localStorage.getItem('novel_stream_enabled');
+    if (saved === '0') {
+        novel.streamEnabled = false;
+        document.getElementById('stream-toggle').checked = false;
+    }
+    
+    // 初始化persona输入框
+    const userPersona = {{ user_persona | tojson | default('""') }};
+    if (userPersona) {
+        const personaInput = document.getElementById('persona-input');
+        if (personaInput) {
+            personaInput.value = userPersona;
+        }
+    }
+    
+    console.log('Novel initialized:', {
+        characters: novel.characters,
+        systemCount: novel.characters.system.length,
+        userCount: novel.characters.user.length
+    });
+})();
+</script>
+{% endblock %}

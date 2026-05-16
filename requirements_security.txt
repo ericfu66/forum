@@ -1,0 +1,17 @@
+# 安全增强依赖包
+
+# HTML清理和XSS防护
+bleach==6.1.0
+
+# 图片处理（验证码生成）
+Pillow==10.1.0
+
+# 已有的Flask相关依赖（参考）
+# Flask==3.0.0
+# Flask-Login==0.6.3
+# Flask-SQLAlchemy==3.1.1
+# Werkzeug==3.0.1
+
+# 其他安全相关
+# python-dotenv==1.0.0  # 环境变量管理
+# email-validator==2.1.0  # 邮箱验证（可选）

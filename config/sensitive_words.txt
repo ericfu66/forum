@@ -1,0 +1,46 @@
+# 敏感词列表（每行一个，#开头为注释）
+# 系统保留词
+admin
+root
+system
+superuser
+moderator
+webmaster
+sysop
+# 常见英文脏话
+fuck
+shit
+damn
+bitch
+asshole
+bastard
+dick
+pussy
+crap
+# 常见中文脏话
+他妈
+妈的
+操你
+傻逼
+狗日
+混蛋
+王八蛋
+滚蛋
+去死
+贱人
+# 广告/垃圾信息
+代开发票
+办证
+赌博
+博彩
+彩票预测
+刷单
+兼职赚钱
+日赚
+网赚
+# 政治敏感
+法轮功
+六四
+天安门
+
+傻福

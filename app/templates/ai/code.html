@@ -1,0 +1,660 @@
+{% extends "base.html" %}
+
+{% block title %}代码运行器 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.code-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.code-page-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.code-page-header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--primary-color), #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.code-page-header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.code-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .code-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+.code-panel {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.code-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.code-panel-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.code-panel-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.code-editor {
+    position: relative;
+}
+
+.code-editor textarea {
+    width: 100%;
+    min-height: 400px;
+    padding: 16px;
+    border: none;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+}
+
+.code-editor textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.output-panel {
+    min-height: 400px;
+}
+
+.output-content {
+    padding: 16px;
+    min-height: 350px;
+    max-height: 500px;
+    overflow: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--bg-primary);
+}
+
+.output-content pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.output-success { color: var(--success-color, #4CAF50); }
+.output-error { color: var(--danger-color, #F44336); }
+.output-info { color: var(--text-muted); }
+
+.output-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.output-images img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.output-images img:hover {
+    transform: scale(1.02);
+}
+
+/* 语言切换标签 */
+.lang-tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.lang-tab {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.lang-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.lang-tab.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* 包管理面板 */
+.packages-panel {
+    margin-top: 20px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.packages-header {
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.packages-content {
+    padding: 16px;
+}
+
+.package-install-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.package-install-form input {
+    flex: 1;
+}
+
+.package-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.package-tag {
+    padding: 4px 10px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.package-tag.installed {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.2));
+    color: var(--success-color);
+}
+
+/* 执行信息 */
+.execution-info {
+    display: flex;
+    gap: 16px;
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.execution-info span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* HTML预览iframe */
+.html-preview-frame {
+    width: 100%;
+    min-height: 350px;
+    border: none;
+    background: white;
+}
+
+/* 快捷键提示 */
+.shortcuts-hint {
+    text-align: center;
+    padding: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+}
+
+.shortcuts-hint kbd {
+    padding: 2px 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: inherit;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="code-page">
+    <div class="code-page-header">
+        <h1>🖥️ 代码运行器</h1>
+        <p>在线运行Python代码，预览HTML页面</p>
+    </div>
+
+    <div class="code-main">
+        <!-- 代码编辑面板 -->
+        <div class="code-panel">
+            <div class="code-panel-header">
+                <div class="code-panel-title">
+                    <div class="lang-tabs">
+                        <button class="lang-tab active" data-lang="python" onclick="switchLang('python')">🐍 Python</button>
+                        <button class="lang-tab" data-lang="html" onclick="switchLang('html')">🌐 HTML</button>
+                    </div>
+                </div>
+                <div class="code-panel-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="clearCode()">🗑️ 清空</button>
+                    <button class="btn btn-primary btn-sm" id="run-btn" onclick="runCode()">▶️ 运行</button>
+                </div>
+            </div>
+            <div class="code-editor">
+                <textarea id="code-input" placeholder="在此输入代码...
+
+Python示例：
+print('Hello, World!')
+
+# 支持matplotlib绑图
+import matplotlib.pyplot as plt
+plt.plot([1, 2, 3, 4])
+plt.title('示例图表')
+plt.show()"></textarea>
+            </div>
+            <div class="shortcuts-hint">
+                <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码 | <kbd>Tab</kbd> 缩进
+            </div>
+        </div>
+
+        <!-- 输出面板 -->
+        <div class="code-panel output-panel">
+            <div class="code-panel-header">
+                <div class="code-panel-title">
+                    📤 输出
+                </div>
+                <div class="code-panel-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="clearOutput()">清空</button>
+                </div>
+            </div>
+            <div class="output-content" id="output-content">
+                <span class="output-info">运行结果将显示在这里...</span>
+            </div>
+            <div class="execution-info" id="execution-info" style="display: none;">
+                <span id="exec-time">⏱️ 执行时间: -</span>
+                <span id="exec-status">📊 状态: -</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 包管理面板 -->
+    <div class="packages-panel">
+        <div class="packages-header">
+            <span class="code-panel-title">📦 Python库管理</span>
+            <button class="btn btn-ghost btn-sm" onclick="refreshPackages()">🔄 刷新</button>
+        </div>
+        <div class="packages-content">
+            <div class="package-install-form">
+                <input type="text" id="package-input" class="form-control" placeholder="输入要安装的库名，如 numpy">
+                <button class="btn btn-primary" onclick="installPackage()">安装</button>
+            </div>
+            <div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">可安装的库（白名单）：</p>
+                <div class="package-list" id="allowed-packages"></div>
+            </div>
+            <div style="margin-top: 16px;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">已安装的库：</p>
+                <div class="package-list" id="installed-packages"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentLang = 'python';
+let isRunning = false;
+
+// 切换语言
+function switchLang(lang) {
+    currentLang = lang;
+    document.querySelectorAll('.lang-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.lang === lang);
+    });
+    
+    const runBtn = document.getElementById('run-btn');
+    runBtn.textContent = lang === 'python' ? '▶️ 运行' : '👁️ 预览';
+    
+    const input = document.getElementById('code-input');
+    if (lang === 'python') {
+        input.placeholder = `在此输入Python代码...
+
+Python示例：
+print('Hello, World!')
+
+# 支持matplotlib绑图
+import matplotlib.pyplot as plt
+plt.plot([1, 2, 3, 4])
+plt.title('示例图表')
+plt.show()`;
+    } else {
+        input.placeholder = `在此输入HTML代码...
+
+HTML示例：
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        h1 { color: #E91E63; }
+    </style>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+    <p>这是一个HTML预览示例</p>
+</body>
+</html>`;
+    }
+}
+
+// 运行代码
+async function runCode(stdinInput = null) {
+    if (isRunning) return;
+    
+    const code = document.getElementById('code-input').value.trim();
+    if (!code) {
+        showOutput('请输入代码', 'info');
+        return;
+    }
+    
+    const runBtn = document.getElementById('run-btn');
+    const outputContent = document.getElementById('output-content');
+    const execInfo = document.getElementById('execution-info');
+    
+    if (currentLang === 'html') {
+        // HTML预览
+        outputContent.innerHTML = '';
+        const iframe = document.createElement('iframe');
+        iframe.className = 'html-preview-frame';
+        iframe.sandbox = 'allow-scripts allow-same-origin';
+        outputContent.appendChild(iframe);
+        
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(code);
+        doc.close();
+        
+        // 自动调整高度
+        setTimeout(() => {
+            try {
+                const height = doc.body.scrollHeight + 20;
+                iframe.style.height = Math.min(Math.max(height, 200), 500) + 'px';
+            } catch (e) {}
+        }, 100);
+        
+        execInfo.style.display = 'none';
+        return;
+    }
+    
+    // Python运行
+    isRunning = true;
+    runBtn.disabled = true;
+    runBtn.textContent = '⏳ 运行中...';
+    showOutput('正在执行代码...', 'info');
+    
+    try {
+        const body = { code, timeout: 30 };
+        if (stdinInput !== null) {
+            body.stdin_input = stdinInput;
+        }
+        
+        const response = await fetch('/ai/api/code/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        const result = await response.json();
+        
+        // 如果需要用户输入
+        if (result.needs_input) {
+            showInputPromptPage(result);
+            execInfo.style.display = 'none';
+            return;
+        }
+        
+        if (result.success) {
+            let html = `<pre class="output-success">${escapeHtml(result.output || '(无输出)')}</pre>`;
+            if (result.images && result.images.length > 0) {
+                html += '<div class="output-images">';
+                result.images.forEach(img => {
+                    html += `<img src="${img}" onclick="window.open('${img}')">`;
+                });
+                html += '</div>';
+            }
+            outputContent.innerHTML = html;
+        } else {
+            outputContent.innerHTML = `<pre class="output-error">${escapeHtml(result.error || '运行失败')}</pre>`;
+        }
+        
+        // 显示执行信息
+        execInfo.style.display = 'flex';
+        document.getElementById('exec-time').textContent = `⏱️ 执行时间: ${result.execution_time || 0}s`;
+        document.getElementById('exec-status').textContent = `📊 状态: ${result.success ? '✅ 成功' : '❌ 失败'}`;
+        
+    } catch (e) {
+        showOutput('请求失败: ' + e.message, 'error');
+    } finally {
+        isRunning = false;
+        runBtn.disabled = false;
+        runBtn.textContent = '▶️ 运行';
+    }
+}
+
+// 显示用户输入提示框（独立页面版本）
+function showInputPromptPage(result) {
+    const outputContent = document.getElementById('output-content');
+    const prompts = result.input_prompt || ['请输入'];
+    const promptText = prompts.join('\n');
+    const isInteractive = result.is_interactive || false;
+    
+    let warningHtml = '';
+    if (isInteractive) {
+        warningHtml = `
+            <div style="margin-bottom:16px;padding:12px;background:rgba(255,152,0,0.1);border-radius:8px;border-left:4px solid var(--warning-color, #FF9800);">
+                <strong style="color:var(--warning-color);">⚠️ 交互式程序提示</strong><br>
+                <span style="font-size:0.9rem;color:var(--text-muted);">
+                    这是一个交互式程序（如游戏），包含循环中的多次输入。<br>
+                    由于无法实时交互，请尝试一次性提供所有输入值，但复杂的交互逻辑可能无法正常运行。<br>
+                    <strong>建议：</strong>将此类程序下载到本地运行以获得完整体验。
+                </span>
+            </div>
+        `;
+    }
+    
+    outputContent.innerHTML = `
+        <div class="code-input-prompt" style="padding:16px;">
+            ${warningHtml}
+            <div style="margin-bottom:12px;color:var(--warning-color, #FF9800);font-size:1rem;">
+                ${isInteractive ? '' : '⚠️'} ${result.message || '程序需要用户输入'}
+            </div>
+            <div style="margin-bottom:12px;font-size:0.9rem;color:var(--text-muted);">
+                <strong>输入提示:</strong> ${escapeHtml(promptText)}
+            </div>
+            <div style="margin-bottom:12px;">
+                <textarea id="stdin-input" placeholder="输入内容（多行输入用换行分隔）${isInteractive ? '\n例如猜数游戏：每行输入一个猜测的数字' : ''}" 
+                    style="width:100%;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);font-family:monospace;resize:vertical;min-height:${isInteractive ? '120' : '80'}px;font-size:14px;"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;">
+                <button class="btn btn-primary" onclick="submitInput()">
+                    ▶️ 提交输入并运行
+                </button>
+                <button class="btn btn-ghost" onclick="clearOutput()">
+                    取消
+                </button>
+            </div>
+            <div style="margin-top:12px;font-size:0.8rem;color:var(--text-muted);">
+                💡 提示：如果程序有多个input()，请按顺序输入，每行一个值<br>
+                按 <kbd style="padding:2px 6px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;">Ctrl</kbd> + <kbd style="padding:2px 6px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;">Enter</kbd> 快速提交
+            </div>
+        </div>
+    `;
+    
+    // 绑定快捷键
+    const stdinTextarea = document.getElementById('stdin-input');
+    stdinTextarea.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            submitInput();
+        }
+    });
+    stdinTextarea.focus();
+}
+
+// 提交用户输入
+function submitInput() {
+    const stdinTextarea = document.getElementById('stdin-input');
+    const userInput = stdinTextarea.value;
+    if (!userInput.trim()) {
+        stdinTextarea.style.borderColor = 'var(--danger-color)';
+        stdinTextarea.placeholder = '请输入内容...';
+        return;
+    }
+    runCode(userInput);
+}
+
+// 显示输出
+function showOutput(text, type = 'info') {
+    const outputContent = document.getElementById('output-content');
+    const classMap = {
+        success: 'output-success',
+        error: 'output-error',
+        info: 'output-info'
+    };
+    outputContent.innerHTML = `<pre class="${classMap[type] || 'output-info'}">${escapeHtml(text)}</pre>`;
+}
+
+// 清空代码
+function clearCode() {
+    document.getElementById('code-input').value = '';
+}
+
+// 清空输出
+function clearOutput() {
+    document.getElementById('output-content').innerHTML = '<span class="output-info">运行结果将显示在这里...</span>';
+    document.getElementById('execution-info').style.display = 'none';
+}
+
+// 安装包
+async function installPackage() {
+    const input = document.getElementById('package-input');
+    const pkg = input.value.trim();
+    if (!pkg) return;
+    
+    showOutput(`正在安装 ${pkg}...`, 'info');
+    
+    try {
+        const response = await fetch('/ai/api/code/install', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ package: pkg })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showOutput(`✅ ${result.message}`, 'success');
+            input.value = '';
+            refreshPackages();
+        } else {
+            showOutput(`❌ ${result.message}`, 'error');
+        }
+    } catch (e) {
+        showOutput('安装失败: ' + e.message, 'error');
+    }
+}
+
+// 刷新包列表
+async function refreshPackages() {
+    try {
+        const response = await fetch('/ai/api/code/packages');
+        const data = await response.json();
+        
+        if (data.success) {
+            // 显示允许的包
+            const allowedEl = document.getElementById('allowed-packages');
+            allowedEl.innerHTML = data.allowed.map(pkg => 
+                `<span class="package-tag">${pkg}</span>`
+            ).join('');
+            
+            // 显示已安装的包
+            const installedEl = document.getElementById('installed-packages');
+            installedEl.innerHTML = data.installed.map(pkg => 
+                `<span class="package-tag installed">${pkg.name} (${pkg.version})</span>`
+            ).join('');
+        }
+    } catch (e) {
+        console.error('Failed to load packages:', e);
+    }
+}
+
+// HTML转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 快捷键
+document.getElementById('code-input').addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + Enter 运行
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runCode();
+    }
+    // Tab 缩进
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 4;
+    }
+});
+
+// 页面加载时刷新包列表
+document.addEventListener('DOMContentLoaded', refreshPackages);
+</script>
+{% endblock %}

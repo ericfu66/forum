@@ -1,0 +1,2107 @@
+{% extends "base.html" %}
+
+{% block title %}AI对话 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-page {
+    display: flex;
+    height: calc(100vh - 70px);
+}
+
+.chat-sidebar {
+    width: 300px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.assistant-selector {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 45%;
+    overflow-y: auto;
+}
+
+.assistant-selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.assistant-selector-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.assistant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.assistant-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.assistant-item:hover { background: var(--bg-tertiary); }
+.assistant-item.active { background: var(--primary-light); border-color: var(--primary-color); }
+
+.assistant-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.assistant-info { flex: 1; min-width: 0; }
+.assistant-name { font-weight: 600; font-size: 0.9rem; }
+.assistant-desc { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.assistant-forum .assistant-icon { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+.assistant-general .assistant-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+.assistant-code .assistant-icon { background: linear-gradient(135deg, #11998e, #38ef7d); }
+.assistant-creative .assistant-icon { background: linear-gradient(135deg, #f093fb, #f5576c); }
+.assistant-translate .assistant-icon { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.assistant-tutor .assistant-icon { background: linear-gradient(135deg, #fa709a, #fee140); }
+.assistant-custom .assistant-icon { background: linear-gradient(135deg, #a8edea, #fed6e3); }
+
+.chat-dialogs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.dialog-section-title {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dialog-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+}
+
+.dialog-item:hover { background: var(--bg-tertiary); }
+.dialog-item.active { background: var(--primary-light); }
+.dialog-item-icon { font-size: 1.2rem; }
+.dialog-item-content { flex: 1; min-width: 0; }
+.dialog-item-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dialog-item-time { font-size: 0.75rem; color: var(--text-muted); }
+
+.dialog-item-delete {
+    opacity: 0;
+    padding: 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+.dialog-item:hover .dialog-item-delete { opacity: 1; }
+.dialog-item-delete:hover { color: #F44336; }
+
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+}
+
+.chat-header {
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chat-header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-header-title h2 { margin: 0; font-size: 1.1rem; }
+
+.chat-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+/* 消息样式 - 毛玻璃效果 */
+.chat-message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    max-width: 85%;
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-message.user-message {
+    flex-direction: row-reverse;
+    margin-left: auto;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary-color), #764ba2);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.ai-message .message-avatar {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.user-message .message-avatar {
+    background: linear-gradient(135deg, var(--primary-color), #ff6b6b);
+}
+
+/* 毛玻璃气泡 */
+.glass-bubble {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 14px 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    line-height: 1.6;
+}
+
+[data-theme="dark"] .glass-bubble {
+    background: rgba(30, 30, 50, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-message .glass-bubble {
+    border-top-left-radius: 6px;
+}
+
+.user-message .glass-bubble {
+    border-top-right-radius: 6px;
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.9), rgba(156, 39, 176, 0.9));
+    color: white;
+    border: none;
+}
+
+.user-message .glass-bubble .message-time {
+    color: rgba(255,255,255,0.7);
+}
+
+.message-content {
+    word-break: break-word;
+    line-height: 1.5;
+}
+
+.message-content p { margin: 0 0 4px; }
+.message-content p:last-child { margin-bottom: 0; }
+
+.message-content br + br { display: none; }
+
+.message-content code {
+    background: rgba(0,0,0,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.user-message .message-content code {
+    background: rgba(255,255,255,0.2);
+}
+
+.message-content strong {
+    font-weight: 700;
+}
+
+.message-content h1, .message-content h2, .message-content h3,
+.message-content h4, .message-content h5, .message-content h6 {
+    margin: 12px 0 6px;
+    font-weight: 600;
+}
+
+.message-content h1:first-child, .message-content h2:first-child, 
+.message-content h3:first-child { margin-top: 0; }
+
+.message-content ul, .message-content ol {
+    margin: 4px 0;
+    padding-left: 20px;
+}
+
+.message-content li { margin: 2px 0; }
+
+.message-content blockquote {
+    margin: 6px 0;
+    padding: 6px 12px;
+    border-left: 3px solid var(--primary-color);
+    background: rgba(0,0,0,0.05);
+    border-radius: 0 8px 8px 0;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    text-align: right;
+}
+
+/* 消息底部区域 */
+.message-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    gap: 12px;
+}
+
+.message-footer .message-time {
+    margin-top: 0;
+}
+
+/* 消息操作按钮 */
+.message-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-message:hover .message-actions {
+    opacity: 1;
+}
+
+.message-action-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    background: rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-action-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.message-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.regenerate-btn:hover {
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(118, 75, 162, 0.1));
+}
+
+[data-theme="dark"] .message-action-btn {
+    background: rgba(255,255,255,0.05);
+}
+
+.message-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.message-image {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.message-image:hover { transform: scale(1.02); }
+
+/* 表情包样式 */
+.sticker-container {
+    display: inline-block;
+    margin: 8px 0;
+}
+
+.sticker-image {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.sticker-image:hover {
+    transform: scale(1.05);
+}
+
+.sticker-placeholder {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(118, 75, 162, 0.1));
+    border-radius: 12px;
+    margin: 8px 0;
+    font-size: 0.9rem;
+}
+
+.sticker-emoji {
+    font-size: 1.2rem;
+    animation: pulse 1.5s infinite;
+}
+
+.sticker-desc {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 代码块 */
+.code-block-wrapper {
+    margin: 12px 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] .code-block-wrapper {
+    background: rgba(0,0,0,0.3);
+}
+
+.code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.1);
+}
+
+.code-lang {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.code-copy-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    background: var(--primary-color);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    transition: all 0.2s;
+}
+
+.code-copy-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(233, 30, 99, 0.3);
+}
+
+.code-block-wrapper pre {
+    margin: 0;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+}
+
+.code-block-wrapper code {
+    background: none !important;
+    padding: 0 !important;
+}
+
+/* 思维链 */
+.thinking-block {
+    background: rgba(0,0,0,0.05);
+    border-left: 3px solid var(--text-muted);
+    padding: 12px 16px;
+    border-radius: 0 12px 12px 0;
+    margin: 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.thinking-header {
+    cursor: pointer;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.thinking-content.collapsed { display: none; }
+
+/* 打字动画 */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* 欢迎界面 */
+.welcome-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px;
+}
+
+.welcome-icon { font-size: 4rem; margin-bottom: 20px; }
+.welcome-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+.welcome-desc { color: var(--text-muted); margin-bottom: 24px; }
+
+.welcome-suggestions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-width: 500px;
+}
+
+.suggestion-card {
+    padding: 16px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+[data-theme="dark"] .suggestion-card {
+    background: rgba(30,30,50,0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.suggestion-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.suggestion-title { font-weight: 600; margin-bottom: 4px; font-size: 0.9rem; }
+.suggestion-text { font-size: 0.8rem; color: var(--text-muted); }
+
+/* 输入区域 */
+.chat-input-area {
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+.upload-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.upload-preview:empty { display: none; }
+
+.upload-preview-item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.upload-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.upload-preview-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #F44336;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.chat-input-actions { display: flex; gap: 8px; }
+
+.chat-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    resize: none;
+    max-height: 150px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+#send-btn {
+    height: 48px;
+    padding: 0 24px;
+    border-radius: 24px;
+}
+
+.upload-btn {
+    height: 48px;
+    width: 48px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    border-radius: 50%;
+}
+
+/* 搜索开关 */
+#search-toggle {
+    transition: all 0.3s;
+}
+
+#search-toggle.active {
+    background: linear-gradient(135deg, var(--primary-color), #764ba2);
+    color: white;
+    box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+}
+
+#search-toggle.active #search-icon {
+    animation: pulse 2s infinite;
+}
+
+#sticker-btn.active {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: white;
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+}
+
+#sticker-btn.active #sticker-icon {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* 模态框 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-title { font-size: 1.2rem; font-weight: 600; }
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* 开关样式 */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--bg-tertiary);
+    transition: 0.3s;
+    border-radius: 22px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider { background-color: var(--primary-color); }
+input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+/* ============================================
+   移动端响应式优化 - 高端设计
+   ============================================ */
+
+@media (max-width: 768px) {
+    .chat-sidebar { display: none; }
+    
+    /* 关键修复：移动端聊天页面布局 */
+    .chat-page { 
+        height: calc(100vh - 60px);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-header { display: none; }
+    
+    /* 聊天主区域 - flex布局确保输入框在底部 */
+    .chat-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+    
+    /* 移动端头部 - 毛玻璃效果 */
+    .mobile-chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        flex-shrink: 0;
+        z-index: 100;
+    }
+    
+    [data-theme="dark"] .mobile-chat-header {
+        background: rgba(22,33,62,0.95);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    
+    .mobile-chat-header-left { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    /* 移动端按钮 - 高端样式 */
+    .mobile-history-btn, .mobile-new-chat-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+        border: 1px solid var(--glass-border);
+        font-size: 1.3rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        flex-shrink: 0;
+    }
+    
+    .mobile-history-btn:active, .mobile-new-chat-btn:active {
+        transform: scale(0.95);
+        background: var(--primary-light);
+    }
+    
+    .mobile-new-chat-btn {
+        background: linear-gradient(135deg, var(--primary-color), #764ba2);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+    }
+    
+    .mobile-new-chat-btn:active {
+        box-shadow: 0 2px 8px rgba(233, 30, 99, 0.4);
+    }
+    
+    /* 助手选择器触发器 - 高端样式 */
+    .mobile-assistant-trigger {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+        border: 1px solid var(--glass-border);
+        border-radius: 22px;
+        cursor: pointer;
+        transition: all 0.3s;
+        flex: 1;
+        min-width: 0;
+        max-width: 200px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .mobile-assistant-trigger:active {
+        transform: scale(0.98);
+        background: var(--primary-light);
+        border-color: var(--primary-color);
+    }
+    
+    .mobile-assistant-icon { 
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+    
+    .mobile-assistant-name { 
+        font-weight: 600; 
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+    
+    .mobile-assistant-arrow { 
+        font-size: 0.65rem; 
+        color: var(--text-muted);
+        transition: transform 0.3s;
+        flex-shrink: 0;
+    }
+    
+    /* 消息区域优化 - 关键：flex-grow让消息区域占满剩余空间 */
+    .chat-messages { 
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 12px;
+        padding-bottom: 20px;
+        -webkit-overflow-scrolling: touch;
+        min-height: 0;
+    }
+    
+    .chat-message { 
+        max-width: 88%;
+        margin-bottom: 16px;
+    }
+    
+    .chat-message.user-message {
+        margin-left: auto;
+    }
+    
+    .message-avatar { 
+        width: 36px; 
+        height: 36px; 
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    
+    .glass-bubble { 
+        padding: 12px 16px; 
+        font-size: 0.95rem;
+        border-radius: 18px;
+        line-height: 1.6;
+    }
+    
+    .ai-message .glass-bubble {
+        border-top-left-radius: 6px;
+    }
+    
+    .user-message .glass-bubble {
+        border-top-right-radius: 6px;
+    }
+    
+    /* 移动端消息操作按钮 */
+    .message-actions {
+        opacity: 1;
+    }
+    
+    .message-action-btn {
+        padding: 6px 12px;
+        font-size: 0.7rem;
+    }
+    
+    /* 代码块移动端优化 */
+    .code-block-wrapper {
+        margin: 10px -4px;
+        border-radius: 14px;
+        font-size: 0.85rem;
+    }
+    
+    .code-block-wrapper pre {
+        padding: 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 输入区域优化 - 关键：固定在底部 */
+    .chat-input-area { 
+        flex-shrink: 0;
+        padding: 12px 12px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--glass-border);
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    }
+    
+    .chat-input-wrapper {
+        gap: 8px;
+        align-items: flex-end;
+    }
+    
+    .chat-input-actions {
+        gap: 4px;
+        flex-shrink: 0;
+    }
+    
+    .chat-input { 
+        font-size: 16px;
+        padding: 12px 16px;
+        border-radius: 22px;
+        min-height: 44px;
+        max-height: 120px;
+    }
+    
+    #send-btn { 
+        height: 44px; 
+        min-width: 60px;
+        padding: 0 16px;
+        border-radius: 22px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
+    .upload-btn { 
+        height: 44px; 
+        width: 44px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+    }
+    
+    /* 欢迎界面移动端优化 */
+    .welcome-screen {
+        padding: 30px 20px;
+        justify-content: flex-start;
+        padding-top: 15vh;
+    }
+    
+    .welcome-icon {
+        font-size: 3.5rem;
+        margin-bottom: 16px;
+    }
+    
+    .welcome-title {
+        font-size: 1.4rem;
+        margin-bottom: 8px;
+    }
+    
+    .welcome-desc {
+        font-size: 0.9rem;
+        margin-bottom: 28px;
+    }
+    
+    .welcome-suggestions { 
+        grid-template-columns: 1fr;
+        gap: 10px;
+        width: 100%;
+        max-width: 320px;
+    }
+    
+    .suggestion-card {
+        padding: 14px 16px;
+        border-radius: 16px;
+    }
+    
+    .suggestion-card:active {
+        transform: scale(0.98);
+    }
+    
+    .suggestion-title {
+        font-size: 0.95rem;
+    }
+    
+    .suggestion-text {
+        font-size: 0.8rem;
+    }
+    
+    /* 图片预览优化 */
+    .upload-preview {
+        gap: 8px;
+        margin-bottom: 10px;
+        padding: 0 4px;
+    }
+    
+    .upload-preview-item {
+        width: 64px;
+        height: 64px;
+    }
+    
+    .message-images {
+        gap: 6px;
+    }
+    
+    .message-image {
+        max-width: 160px;
+        max-height: 160px;
+        border-radius: 10px;
+    }
+}
+
+@media (min-width: 769px) {
+    .mobile-chat-header { display: none; }
+}
+
+/* ============================================
+   移动端底部抽屉样式
+   ============================================ */
+
+.mobile-drawer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.mobile-drawer-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* 底部抽屉 */
+.mobile-bottom-drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    border-radius: 24px 24px 0 0;
+    max-height: 75vh;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+}
+
+.mobile-bottom-drawer.active {
+    transform: translateY(0);
+}
+
+.mobile-drawer-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin: 12px auto 8px;
+    flex-shrink: 0;
+}
+
+.mobile-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 16px;
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+}
+
+.mobile-drawer-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.mobile-drawer-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.mobile-drawer-close:active {
+    background: var(--primary-light);
+    transform: scale(0.95);
+}
+
+.mobile-drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 侧边抽屉 */
+.mobile-side-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 320px;
+    background: var(--bg-primary);
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 10px 0 40px rgba(0,0,0,0.15);
+}
+
+.mobile-side-drawer.active {
+    transform: translateX(0);
+}
+
+.mobile-side-drawer .mobile-drawer-header {
+    padding: 20px;
+    padding-top: calc(20px + env(safe-area-inset-top));
+}
+
+/* 助手列表样式 */
+.mobile-assistant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-assistant-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.mobile-assistant-item:active {
+    transform: scale(0.98);
+    background: var(--primary-light);
+}
+
+.mobile-assistant-item.active {
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(118, 75, 162, 0.1));
+    border-color: var(--primary-color);
+}
+
+.mobile-assistant-item .assistant-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.mobile-assistant-item .assistant-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-assistant-item .assistant-name {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.mobile-assistant-item .assistant-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mobile-assistant-item .assistant-check {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+/* 助手图标颜色 */
+.mobile-assistant-item[data-type="forum"] .assistant-icon-wrapper { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+.mobile-assistant-item[data-type="general"] .assistant-icon-wrapper { background: linear-gradient(135deg, #667eea, #764ba2); }
+.mobile-assistant-item[data-type="code"] .assistant-icon-wrapper { background: linear-gradient(135deg, #11998e, #38ef7d); }
+.mobile-assistant-item[data-type="creative"] .assistant-icon-wrapper { background: linear-gradient(135deg, #f093fb, #f5576c); }
+.mobile-assistant-item[data-type="translate"] .assistant-icon-wrapper { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.mobile-assistant-item[data-type="tutor"] .assistant-icon-wrapper { background: linear-gradient(135deg, #fa709a, #fee140); }
+.mobile-assistant-item[data-type="custom"] .assistant-icon-wrapper { background: linear-gradient(135deg, #a8edea, #fed6e3); }
+
+.mobile-assistant-divider {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 16px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* 对话历史列表样式 */
+.mobile-dialog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-dialog-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-secondary);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.mobile-dialog-item:active {
+    transform: scale(0.98);
+    background: var(--primary-light);
+}
+
+.mobile-dialog-item.active {
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.08), rgba(118, 75, 162, 0.08));
+    border-left-color: var(--primary-color);
+}
+
+.mobile-dialog-item .dialog-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.mobile-dialog-item .dialog-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-dialog-item .dialog-title {
+    font-weight: 500;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.mobile-dialog-item .dialog-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.mobile-dialog-item .dialog-delete {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.mobile-dialog-item .dialog-delete:active {
+    background: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+}
+
+.mobile-new-dialog-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary-color), #764ba2);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+    transition: all 0.2s;
+}
+
+.mobile-new-dialog-btn:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 10px rgba(233, 30, 99, 0.4);
+}
+
+.mobile-history-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.mobile-history-empty-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.mobile-history-empty p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+    <!-- 左侧面板 -->
+    <div class="chat-sidebar">
+        <div class="chat-sidebar-header">
+            <button class="btn btn-primary" onclick="chat.createNewDialog()" style="width: 100%;">
+                ➕ 新建对话
+            </button>
+        </div>
+
+        <!-- 助手选择器 -->
+        <div class="assistant-selector">
+            <div class="assistant-selector-header">
+                <span class="assistant-selector-label">选择 AI 助手</span>
+                <button class="btn btn-ghost btn-sm" onclick="openAssistantModal()" title="管理自定义助手">⚙️</button>
+            </div>
+            <div class="assistant-list" id="assistant-list">
+                <div class="assistant-item assistant-forum active" data-assistant="forum" onclick="chat.switchAssistant('forum')">
+                    <div class="assistant-icon">📋</div>
+                    <div class="assistant-info">
+                        <div class="assistant-name">论坛助手</div>
+                        <div class="assistant-desc">帖子问答、内容检索</div>
+                    </div>
+                </div>
+                <div class="assistant-item assistant-general" data-assistant="general" onclick="chat.switchAssistant('general')">
+                    <div class="assistant-icon">🤖</div>
+                    <div class="assistant-info">
+                        <div class="assistant-name">通用助手</div>
+                        <div class="assistant-desc">问答、聊天、建议</div>
+                    </div>
+                </div>
+                <div class="assistant-item assistant-code" data-assistant="code" onclick="chat.switchAssistant('code')">
+                    <div class="assistant-icon">💻</div>
+                    <div class="assistant-info">
+                        <div class="assistant-name">编程助手</div>
+                        <div class="assistant-desc">代码、调试、技术</div>
+                    </div>
+                </div>
+                <div class="assistant-item assistant-creative" data-assistant="creative" onclick="chat.switchAssistant('creative')">
+                    <div class="assistant-icon">🎨</div>
+                    <div class="assistant-info">
+                        <div class="assistant-name">创意助手</div>
+                        <div class="assistant-desc">写作、创意、灵感</div>
+                    </div>
+                </div>
+                <div class="assistant-item assistant-translate" data-assistant="translate" onclick="chat.switchAssistant('translate')">
+                    <div class="assistant-icon">🌐</div>
+                    <div class="assistant-info">
+                        <div class="assistant-name">翻译助手</div>
+                        <div class="assistant-desc">多语言翻译润色</div>
+                    </div>
+                </div>
+                <div class="assistant-item assistant-tutor" data-assistant="tutor" onclick="chat.switchAssistant('tutor')">
+                    <div class="assistant-icon">📚</div>
+                    <div class="assistant-info">
+                        <div class="assistant-name">学习导师</div>
+                        <div class="assistant-desc">知识讲解、学习</div>
+                    </div>
+                </div>
+                <div id="custom-assistants-container"></div>
+            </div>
+        </div>
+
+        <!-- 对话列表 -->
+        <div class="chat-dialogs" id="dialog-list">
+            <div class="dialog-section-title">历史对话</div>
+            {% for dialog in dialogs %}
+            <div class="dialog-item {{ 'active' if loop.index == 1 else '' }}" data-dialog-id="{{ dialog.id }}" onclick="chat.loadDialog({{ dialog.id }})">
+                <span class="dialog-item-icon">💬</span>
+                <div class="dialog-item-content">
+                    <div class="dialog-item-title">{{ dialog.title }}</div>
+                    <div class="dialog-item-time">{{ dialog.created_at }}</div>
+                </div>
+                <button class="dialog-item-delete" onclick="event.stopPropagation(); chat.deleteDialog({{ dialog.id }})">🗑️</button>
+            </div>
+            {% endfor %}
+            {% if not dialogs %}
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                <p>暂无对话记录</p>
+                <p style="font-size: 0.85rem;">点击上方按钮开始新对话</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 右侧聊天区域 -->
+    <div class="chat-main">
+        <!-- 移动端头部 -->
+        <div class="mobile-chat-header">
+            <div class="mobile-chat-header-left">
+                <button class="mobile-history-btn" onclick="openHistoryDrawer()" title="对话历史">📜</button>
+                <div class="mobile-assistant-trigger" onclick="openAssistantDrawer()">
+                    <span class="mobile-assistant-icon" id="mobile-assistant-icon">🤖</span>
+                    <span class="mobile-assistant-name" id="mobile-assistant-name">通用助手</span>
+                    <span class="mobile-assistant-arrow">▼</span>
+                </div>
+            </div>
+            <button class="mobile-new-chat-btn" onclick="chat.createNewDialog()" title="新建对话">➕</button>
+        </div>
+
+        <!-- 桌面端头部 -->
+        <div class="chat-header">
+            <div class="chat-header-title">
+                <span id="current-assistant-icon">🤖</span>
+                <h2 id="current-assistant-name">通用助手</h2>
+            </div>
+            <div class="chat-header-actions">
+                <label class="toggle-switch" title="AI表情包" style="transform: scale(0.8);">
+                    <input type="checkbox" id="sticker-toggle" onchange="toggleStickerMode(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: 12px;">表情包</span>
+                <label class="toggle-switch" title="显示思维过程" style="transform: scale(0.8);">
+                    <input type="checkbox" id="show-thinking" onchange="toggleThinkingVisibility(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">思维链</span>
+            </div>
+        </div>
+
+        <!-- 消息区域 -->
+        <div id="chat-messages" class="chat-messages">
+            {% if dialogs and dialogs[0].messages %}
+                {% for msg in dialogs[0].messages %}
+                <div class="chat-message {{ 'ai-message' if msg.role == 'assistant' else 'user-message' }}">
+                    <div class="message-avatar">{{ '🤖' if msg.role == 'assistant' else '👤' }}</div>
+                    <div class="message-bubble glass-bubble">
+                        <div class="message-content">{{ msg.content|markdown }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="welcome-screen" id="welcome-screen">
+                    <div class="welcome-icon">🤖</div>
+                    <h2 class="welcome-title">你好！我是 AI 助手</h2>
+                    <p class="welcome-desc">选择上方不同的助手角色，开始智能对话</p>
+                    <div class="welcome-suggestions">
+                        <div class="suggestion-card" onclick="chat.sendSuggestion('帮我写一篇关于人工智能的文章')">
+                            <div class="suggestion-title">✍️ 写作帮助</div>
+                            <div class="suggestion-text">帮我写一篇文章...</div>
+                        </div>
+                        <div class="suggestion-card" onclick="chat.sendSuggestion('解释一下什么是机器学习')">
+                            <div class="suggestion-title">📖 知识学习</div>
+                            <div class="suggestion-text">解释一个概念...</div>
+                        </div>
+                        <div class="suggestion-card" onclick="chat.sendSuggestion('帮我检查这段Python代码')">
+                            <div class="suggestion-title">💻 代码审查</div>
+                            <div class="suggestion-text">检查代码问题...</div>
+                        </div>
+                        <div class="suggestion-card" onclick="chat.sendSuggestion('把这段话翻译成英文')">
+                            <div class="suggestion-title">🌐 翻译润色</div>
+                            <div class="suggestion-text">翻译或润色文本...</div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input-area">
+            <div class="upload-preview" id="upload-preview"></div>
+            <div class="chat-input-wrapper">
+                <div class="chat-input-actions">
+                    <button class="btn btn-ghost upload-btn" onclick="document.getElementById('image-upload').click()" title="上传图片">🖼️</button>
+                    <input type="file" id="image-upload" accept="image/*" multiple style="display: none;" onchange="handleImageUpload(this.files)">
+                    <button class="btn btn-ghost upload-btn" id="search-toggle" onclick="toggleSearchMode()" title="联网搜索">
+                        <span id="search-icon">🔍</span>
+                    </button>
+                    <button class="btn btn-ghost upload-btn" id="sticker-btn" onclick="toggleStickerMode()" title="AI表情包">
+                        <span id="sticker-icon">🎭</span>
+                    </button>
+                </div>
+                <textarea id="chat-input" class="chat-input" placeholder="输入消息... (Enter发送，Shift+Enter换行)" rows="1"></textarea>
+                <button id="send-btn" class="btn btn-primary">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 自定义助手管理模态框 -->
+<div class="modal-overlay" id="assistant-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="assistant-modal-title">管理自定义助手</h3>
+            <button class="modal-close" onclick="closeAssistantModal()">&times;</button>
+        </div>
+        <div id="assistant-modal-body">
+            <div id="assistant-list-view">
+                <div id="custom-assistant-list" style="margin-bottom: 16px;"></div>
+                <button class="btn btn-primary" onclick="showCreateAssistantForm()" style="width: 100%;">➕ 创建新助手</button>
+            </div>
+            <div id="assistant-form-view" style="display: none;">
+                <input type="hidden" id="edit-assistant-id">
+                <div class="form-group">
+                    <label class="form-label">助手名称 <span style="color: var(--danger-color);">*</span></label>
+                    <input type="text" id="assistant-name-input" class="form-control" placeholder="例如：写作助手" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">图标</label>
+                    <input type="text" id="assistant-icon-input" class="form-control" placeholder="例如：✨" maxlength="10" style="width: 80px;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">简短描述</label>
+                    <input type="text" id="assistant-description-input" class="form-control" placeholder="简短描述助手功能" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">系统提示词 <span style="color: var(--danger-color);">*</span></label>
+                    <textarea id="assistant-prompt-input" class="form-control" rows="5" placeholder="定义助手的角色和行为..." maxlength="2000"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-ghost" onclick="showAssistantList()">取消</button>
+                    <button class="btn btn-primary" onclick="saveAssistant()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 移动端底部抽屉 - 助手选择 -->
+<div class="mobile-drawer-overlay" id="assistant-drawer-overlay" onclick="closeAssistantDrawer()"></div>
+<div class="mobile-bottom-drawer" id="assistant-drawer">
+    <div class="mobile-drawer-handle"></div>
+    <div class="mobile-drawer-header">
+        <h3 class="mobile-drawer-title">选择 AI 助手</h3>
+        <button class="mobile-drawer-close" onclick="closeAssistantDrawer()">✕</button>
+    </div>
+    <div class="mobile-drawer-content">
+        <div class="mobile-assistant-list" id="mobile-assistant-list">
+            <!-- 动态生成 -->
+        </div>
+    </div>
+</div>
+
+<!-- 移动端侧边抽屉 - 对话历史 -->
+<div class="mobile-drawer-overlay" id="history-drawer-overlay" onclick="closeHistoryDrawer()"></div>
+<div class="mobile-side-drawer" id="history-drawer">
+    <div class="mobile-drawer-header">
+        <h3 class="mobile-drawer-title">对话历史</h3>
+        <button class="mobile-drawer-close" onclick="closeHistoryDrawer()">✕</button>
+    </div>
+    <div class="mobile-drawer-content">
+        <button class="mobile-new-dialog-btn" onclick="chat.createNewDialog(); closeHistoryDrawer();">
+            ➕ 新建对话
+        </button>
+        <div class="mobile-dialog-list" id="mobile-dialog-list">
+            <!-- 动态生成 -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ai-chat.js') }}"></script>
+<script>
+var uploadedImages = [];
+var customAssistants = [];
+var showThinking = localStorage.getItem('show-thinking') === 'true';
+var useStickerMode = localStorage.getItem('ai-use-sticker') === 'true';
+
+var chat = new AIChat({
+    dialogId: {{ dialogs[0].id if dialogs else 'null' }},
+    messagesContainer: '#chat-messages',
+    inputElement: '#chat-input',
+    sendButton: '#send-btn',
+    assistants: {
+        forum: { icon: '📋', name: '论坛助手', prompt: '你是论坛智能助手，可以回答用户关于论坛帖子内容的问题。', useKnowledge: true },
+        general: { icon: '🤖', name: '通用助手', prompt: '你是一个乐于助人的AI助手。', useKnowledge: false },
+        code: { icon: '💻', name: '编程助手', prompt: '你是一个专业的编程助手，擅长代码审查、调试和技术解答。当用户需要运行代码时，请提供完整的Python代码块（使用```python标记），用户可以直接点击运行按钮执行代码。你也可以提供HTML代码（使用```html标记）供用户预览。', useKnowledge: false },
+        creative: { icon: '🎨', name: '创意助手', prompt: '你是一个富有创意的写作助手，擅长创意写作、文案和内容创作。', useKnowledge: false },
+        translate: { icon: '🌐', name: '翻译助手', prompt: '你是一个专业的翻译助手。默认将中文翻译成英文，将其他语言翻译成中文。', useKnowledge: false },
+        tutor: { icon: '📚', name: '学习导师', prompt: '你是一位耐心的学习导师，擅长用通俗易懂的方式解释复杂概念。', useKnowledge: false }
+    }
+});
+
+document.getElementById('show-thinking').checked = showThinking;
+
+// 初始化表情包开关状态
+initStickerToggle();
+
+// 初始化搜索开关状态
+initSearchToggle();
+
+function initStickerToggle() {
+    var saved = localStorage.getItem('ai-use-sticker');
+    if (saved === 'true') {
+        toggleStickerMode(true);
+    }
+    // 同步复选框状态
+    var checkbox = document.getElementById('sticker-toggle');
+    if (checkbox) {
+        checkbox.checked = useStickerMode;
+    }
+}
+
+function toggleStickerMode(forceState) {
+    var btn = document.getElementById('sticker-btn');
+    var icon = document.getElementById('sticker-icon');
+    var checkbox = document.getElementById('sticker-toggle');
+    var isActive = forceState !== undefined ? forceState : !useStickerMode;
+    
+    useStickerMode = isActive;
+    chat.useSticker = isActive;
+    
+    if (btn) {
+        btn.classList.toggle('active', isActive);
+    }
+    if (icon) {
+        icon.textContent = isActive ? '😊' : '🎭';
+    }
+    if (checkbox) {
+        checkbox.checked = isActive;
+    }
+    
+    localStorage.setItem('ai-use-sticker', isActive ? 'true' : 'false');
+    
+    if (forceState === undefined) {
+        if (isActive) {
+            Utils.showToast('已开启AI表情包', 'success');
+        } else {
+            Utils.showToast('已关闭AI表情包', 'info');
+        }
+    }
+}
+
+function initSearchToggle() {
+    var saved = localStorage.getItem('ai-use-search');
+    if (saved === 'true') {
+        toggleSearchMode(true);
+    }
+}
+
+function toggleSearchMode(forceState) {
+    var btn = document.getElementById('search-toggle');
+    var icon = document.getElementById('search-icon');
+    var isActive = forceState !== undefined ? forceState : !btn.classList.contains('active');
+    
+    btn.classList.toggle('active', isActive);
+    icon.textContent = isActive ? '🌐' : '🔍';
+    chat.useSearch = isActive;
+    localStorage.setItem('ai-use-search', isActive ? 'true' : 'false');
+    
+    if (isActive) {
+        Utils.showToast('已开启联网搜索', 'success');
+    } else {
+        Utils.showToast('已关闭联网搜索', 'info');
+    }
+}
+
+function toggleThinkingVisibility(show) {
+    showThinking = show;
+    localStorage.setItem('show-thinking', show);
+    document.querySelectorAll('.thinking-block').forEach(function(block) {
+        block.style.display = show ? 'block' : 'none';
+    });
+}
+
+function handleImageUpload(files) {
+    var preview = document.getElementById('upload-preview');
+    for (var i = 0; i < files.length; i++) {
+        if (uploadedImages.length >= 4) {
+            Utils.showToast('最多上传4张图片', 'warning');
+            break;
+        }
+        var file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var base64 = e.target.result;
+            uploadedImages.push(base64);
+            renderUploadPreview();
+        };
+        reader.readAsDataURL(file);
+    }
+    document.getElementById('image-upload').value = '';
+}
+
+function removeUploadedImage(index) {
+    uploadedImages.splice(index, 1);
+    renderUploadPreview();
+}
+
+function renderUploadPreview() {
+    var preview = document.getElementById('upload-preview');
+    preview.innerHTML = '';
+    uploadedImages.forEach(function(base64, index) {
+        var item = document.createElement('div');
+        item.className = 'upload-preview-item';
+        item.innerHTML = '<img src="' + base64 + '" alt="预览"><button class="upload-preview-remove" onclick="removeUploadedImage(' + index + ')">&times;</button>';
+        preview.appendChild(item);
+    });
+}
+
+function openAssistantModal() {
+    document.getElementById('assistant-modal').classList.add('active');
+    loadCustomAssistants();
+}
+
+function closeAssistantModal() {
+    document.getElementById('assistant-modal').classList.remove('active');
+}
+
+function showAssistantList() {
+    document.getElementById('assistant-list-view').style.display = 'block';
+    document.getElementById('assistant-form-view').style.display = 'none';
+    document.getElementById('assistant-modal-title').textContent = '管理自定义助手';
+}
+
+function showCreateAssistantForm() {
+    document.getElementById('assistant-list-view').style.display = 'none';
+    document.getElementById('assistant-form-view').style.display = 'block';
+    document.getElementById('assistant-modal-title').textContent = '创建新助手';
+    document.getElementById('edit-assistant-id').value = '';
+    document.getElementById('assistant-name-input').value = '';
+    document.getElementById('assistant-icon-input').value = '✨';
+    document.getElementById('assistant-description-input').value = '';
+    document.getElementById('assistant-prompt-input').value = '';
+}
+
+function editAssistant(id) {
+    var assistant = customAssistants.find(function(a) { return a.id === id; });
+    if (!assistant) return;
+    
+    document.getElementById('assistant-list-view').style.display = 'none';
+    document.getElementById('assistant-form-view').style.display = 'block';
+    document.getElementById('assistant-modal-title').textContent = '编辑助手';
+    document.getElementById('edit-assistant-id').value = assistant.id;
+    document.getElementById('assistant-name-input').value = assistant.name;
+    document.getElementById('assistant-icon-input').value = assistant.icon;
+    document.getElementById('assistant-description-input').value = assistant.description || '';
+    document.getElementById('assistant-prompt-input').value = assistant.system_prompt;
+}
+
+async function loadCustomAssistants() {
+    try {
+        var response = await fetch('/ai/api/assistants');
+        var data = await response.json();
+        if (data.success) {
+            customAssistants = data.assistants;
+            renderCustomAssistantList();
+            renderCustomAssistantsInSidebar();
+        }
+    } catch (e) {
+        console.error('加载自定义助手失败:', e);
+    }
+}
+
+function renderCustomAssistantList() {
+    var container = document.getElementById('custom-assistant-list');
+    if (customAssistants.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">暂无自定义助手</p>';
+        return;
+    }
+    container.innerHTML = customAssistants.map(function(a) {
+        return '<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 8px;">' +
+            '<span style="font-size: 1.5rem;">' + a.icon + '</span>' +
+            '<div style="flex: 1;"><div style="font-weight: 500;">' + a.name + '</div><div style="font-size: 0.8rem; color: var(--text-muted);">' + (a.description || '无描述') + '</div></div>' +
+            '<button class="btn btn-ghost btn-sm" onclick="editAssistant(' + a.id + ')">✏️</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="deleteAssistant(' + a.id + ')" style="color: var(--danger-color);">🗑️</button></div>';
+    }).join('');
+}
+
+function renderCustomAssistantsInSidebar() {
+    var container = document.getElementById('custom-assistants-container');
+    if (customAssistants.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    container.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-muted); padding: 8px 12px; margin-top: 8px;">自定义助手</div>' +
+        customAssistants.map(function(a) {
+            return '<div class="assistant-item assistant-custom" data-assistant="' + a.id + '" onclick="chat.switchAssistant(\'' + a.id + '\')">' +
+                '<div class="assistant-icon">' + a.icon + '</div>' +
+                '<div class="assistant-info"><div class="assistant-name">' + a.name + '</div><div class="assistant-desc">' + (a.description || '自定义助手') + '</div></div></div>';
+        }).join('');
+}
+
+async function saveAssistant() {
+    var id = document.getElementById('edit-assistant-id').value;
+    var name = document.getElementById('assistant-name-input').value.trim();
+    var icon = document.getElementById('assistant-icon-input').value.trim() || '✨';
+    var description = document.getElementById('assistant-description-input').value.trim();
+    var systemPrompt = document.getElementById('assistant-prompt-input').value.trim();
+    
+    if (!name || !systemPrompt) {
+        Utils.showToast('请填写助手名称和系统提示词', 'warning');
+        return;
+    }
+    
+    try {
+        var url = id ? '/ai/api/assistants/' + id : '/ai/api/assistants';
+        var method = id ? 'PUT' : 'POST';
+        var response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, icon: icon, description: description, system_prompt: systemPrompt })
+        });
+        var data = await response.json();
+        if (data.success) {
+            Utils.showToast(id ? '助手已更新' : '助手已创建', 'success');
+            loadCustomAssistants();
+            showAssistantList();
+        } else {
+            Utils.showToast(data.message || '保存失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('保存失败: ' + e.message, 'danger');
+    }
+}
+
+async function deleteAssistant(id) {
+    if (!confirm('确定要删除这个助手吗？')) return;
+    try {
+        var response = await fetch('/ai/api/assistants/' + id, { method: 'DELETE' });
+        var data = await response.json();
+        if (data.success) {
+            Utils.showToast('助手已删除', 'success');
+            loadCustomAssistants();
+        } else {
+            Utils.showToast(data.message || '删除失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('删除失败: ' + e.message, 'danger');
+    }
+}
+
+// 移动端抽屉
+function openHistoryDrawer() {
+    document.getElementById('history-drawer-overlay').classList.add('active');
+    document.getElementById('history-drawer').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    renderMobileDialogList();
+}
+
+function closeHistoryDrawer() {
+    document.getElementById('history-drawer-overlay').classList.remove('active');
+    document.getElementById('history-drawer').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function openAssistantDrawer() {
+    document.getElementById('assistant-drawer-overlay').classList.add('active');
+    document.getElementById('assistant-drawer').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    renderMobileAssistantList();
+}
+
+function closeAssistantDrawer() {
+    document.getElementById('assistant-drawer-overlay').classList.remove('active');
+    document.getElementById('assistant-drawer').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// 渲染移动端助手列表
+function renderMobileAssistantList() {
+    var container = document.getElementById('mobile-assistant-list');
+    var currentAssistant = chat.currentAssistant || 'general';
+    
+    var builtInAssistants = [
+        { type: 'forum', icon: '📋', name: '论坛助手', desc: '帖子问答、内容检索' },
+        { type: 'general', icon: '🤖', name: '通用助手', desc: '问答、聊天、建议' },
+        { type: 'code', icon: '💻', name: '编程助手', desc: '代码、调试、技术' },
+        { type: 'creative', icon: '🎨', name: '创意助手', desc: '写作、创意、灵感' },
+        { type: 'translate', icon: '🌐', name: '翻译助手', desc: '多语言翻译润色' },
+        { type: 'tutor', icon: '📚', name: '学习导师', desc: '知识讲解、学习' }
+    ];
+    
+    var html = builtInAssistants.map(function(a) {
+        var isActive = currentAssistant === a.type;
+        return '<div class="mobile-assistant-item' + (isActive ? ' active' : '') + '" data-type="' + a.type + '" onclick="selectMobileAssistant(\'' + a.type + '\')">' +
+            '<div class="assistant-icon-wrapper">' + a.icon + '</div>' +
+            '<div class="assistant-info">' +
+                '<div class="assistant-name">' + a.name + '</div>' +
+                '<div class="assistant-desc">' + a.desc + '</div>' +
+            '</div>' +
+            (isActive ? '<span class="assistant-check">✓</span>' : '') +
+        '</div>';
+    }).join('');
+    
+    // 添加自定义助手
+    if (customAssistants && customAssistants.length > 0) {
+        html += '<div class="mobile-assistant-divider">自定义助手</div>';
+        html += customAssistants.map(function(a) {
+            var isActive = currentAssistant == a.id;
+            return '<div class="mobile-assistant-item' + (isActive ? ' active' : '') + '" data-type="custom" onclick="selectMobileAssistant(\'' + a.id + '\')">' +
+                '<div class="assistant-icon-wrapper">' + a.icon + '</div>' +
+                '<div class="assistant-info">' +
+                    '<div class="assistant-name">' + a.name + '</div>' +
+                    '<div class="assistant-desc">' + (a.description || '自定义助手') + '</div>' +
+                '</div>' +
+                (isActive ? '<span class="assistant-check">✓</span>' : '') +
+            '</div>';
+        }).join('');
+    }
+    
+    container.innerHTML = html;
+}
+
+function selectMobileAssistant(type) {
+    chat.switchAssistant(type);
+    closeAssistantDrawer();
+    
+    // 更新移动端头部显示
+    var assistant = chat.options.assistants[type];
+    if (!assistant && customAssistants) {
+        var custom = customAssistants.find(function(a) { return a.id == type; });
+        if (custom) {
+            assistant = { icon: custom.icon, name: custom.name };
+        }
+    }
+    if (assistant) {
+        document.getElementById('mobile-assistant-icon').textContent = assistant.icon;
+        document.getElementById('mobile-assistant-name').textContent = assistant.name;
+    }
+}
+
+// 渲染移动端对话列表
+function renderMobileDialogList() {
+    var container = document.getElementById('mobile-dialog-list');
+    var dialogItems = document.querySelectorAll('.dialog-item');
+    
+    if (dialogItems.length === 0) {
+        container.innerHTML = '<div class="mobile-history-empty">' +
+            '<div class="mobile-history-empty-icon">💬</div>' +
+            '<p>暂无对话记录</p>' +
+        '</div>';
+        return;
+    }
+    
+    var html = '';
+    dialogItems.forEach(function(item) {
+        var dialogId = item.getAttribute('data-dialog-id');
+        var title = item.querySelector('.dialog-item-title').textContent;
+        var time = item.querySelector('.dialog-item-time').textContent;
+        var isActive = item.classList.contains('active');
+        
+        html += '<div class="mobile-dialog-item' + (isActive ? ' active' : '') + '" onclick="loadMobileDialog(' + dialogId + ')">' +
+            '<span class="dialog-icon">💬</span>' +
+            '<div class="dialog-info">' +
+                '<div class="dialog-title">' + title + '</div>' +
+                '<div class="dialog-time">' + time + '</div>' +
+            '</div>' +
+            '<button class="dialog-delete" onclick="event.stopPropagation(); deleteMobileDialog(' + dialogId + ')">🗑️</button>' +
+        '</div>';
+    });
+    
+    container.innerHTML = html;
+}
+
+function loadMobileDialog(dialogId) {
+    chat.loadDialog(dialogId);
+    closeHistoryDrawer();
+}
+
+function deleteMobileDialog(dialogId) {
+    chat.deleteDialog(dialogId);
+    setTimeout(renderMobileDialogList, 300);
+}
+
+// 触摸滑动关闭抽屉
+(function() {
+    var startY = 0;
+    var startX = 0;
+    var drawer = null;
+    var isBottomDrawer = false;
+    
+    document.addEventListener('touchstart', function(e) {
+        var bottomDrawer = document.getElementById('assistant-drawer');
+        var sideDrawer = document.getElementById('history-drawer');
+        
+        if (bottomDrawer.classList.contains('active')) {
+            drawer = bottomDrawer;
+            isBottomDrawer = true;
+            startY = e.touches[0].clientY;
+        } else if (sideDrawer.classList.contains('active')) {
+            drawer = sideDrawer;
+            isBottomDrawer = false;
+            startX = e.touches[0].clientX;
+        } else {
+            drawer = null;
+        }
+    });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (!drawer) return;
+        
+        if (isBottomDrawer) {
+            var deltaY = e.touches[0].clientY - startY;
+            if (deltaY > 0) {
+                drawer.style.transform = 'translateY(' + deltaY + 'px)';
+            }
+        } else {
+            var deltaX = startX - e.touches[0].clientX;
+            if (deltaX > 0) {
+                drawer.style.transform = 'translateX(' + (-deltaX) + 'px)';
+            }
+        }
+    });
+    
+    document.addEventListener('touchend', function(e) {
+        if (!drawer) return;
+        
+        if (isBottomDrawer) {
+            var deltaY = e.changedTouches[0].clientY - startY;
+            if (deltaY > 80) {
+                closeAssistantDrawer();
+            }
+            drawer.style.transform = '';
+        } else {
+            var deltaX = startX - e.changedTouches[0].clientX;
+            if (deltaX > 80) {
+                closeHistoryDrawer();
+            }
+            drawer.style.transform = '';
+        }
+        drawer = null;
+    });
+})();
+
+// 初始化加载自定义助手
+loadCustomAssistants();
+</script>
+{% endblock %}

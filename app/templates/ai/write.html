@@ -1,0 +1,773 @@
+{% extends "base.html" %}
+
+{% block title %}AI写稿 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">✍️ AI写稿</h2>
+                    <p class="text-muted">选择写作类型，输入要求，AI帮你生成文章和标题</p>
+                </div>
+
+                <div class="card-body">
+                    <!-- 写作类型预设 -->
+                    <div class="form-group">
+                        <label class="form-label">写作类型 <span style="color: var(--danger-color);">*</span></label>
+                        <div class="preset-grid">
+                            <button type="button" class="preset-btn" onclick="applyPreset(event, 'literature')">
+                                <span class="preset-icon">📚</span>
+                                <span class="preset-name">文学创作</span>
+                            </button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(event, 'practical')">
+                                <span class="preset-icon">📋</span>
+                                <span class="preset-name">应用文</span>
+                            </button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(event, 'expository')">
+                                <span class="preset-icon">📖</span>
+                                <span class="preset-name">说明文</span>
+                            </button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(event, 'argumentative')">
+                                <span class="preset-icon">💭</span>
+                                <span class="preset-name">议论文</span>
+                            </button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(event, 'fun')">
+                                <span class="preset-icon">🎭</span>
+                                <span class="preset-name">整活写作</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 整活写作子选项 -->
+                    <div id="fun-options" class="form-group" style="display: none;">
+                        <label class="form-label">整活风格</label>
+                        <div class="fun-style-grid">
+                            <label class="fun-style-option">
+                                <input type="radio" name="fun-style" value="unlimited" checked>
+                                <span class="fun-style-label">🔥 无限制</span>
+                            </label>
+                            <label class="fun-style-option">
+                                <input type="radio" name="fun-style" value="tieba">
+                                <span class="fun-style-label">🏠 贴吧风格</span>
+                            </label>
+                            <label class="fun-style-option">
+                                <input type="radio" name="fun-style" value="humor">
+                                <span class="fun-style-label">😂 幽默搞笑</span>
+                            </label>
+                            <label class="fun-style-option">
+                                <input type="radio" name="fun-style" value="luxun">
+                                <span class="fun-style-label">✒️ 鲁迅风格</span>
+                            </label>
+                            <label class="fun-style-option">
+                                <input type="radio" name="fun-style" value="custom">
+                                <span class="fun-style-label">✨ 自定义</span>
+                            </label>
+                        </div>
+                        <input type="text" id="custom-fun-style" class="form-control" 
+                               style="display: none; margin-top: 8px;" 
+                               placeholder="描述你想要的整活风格，例如：阴阳怪气、文言文吐槽...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">写作要求 <span style="color: var(--danger-color);">*</span></label>
+                        <textarea id="topic" class="form-control" rows="3" placeholder="描述你想写的内容，例如：&#10;• 写一篇关于人工智能发展的议论文&#10;• 帮我写一封给老师的感谢信&#10;• 用鲁迅的风格吐槽一下加班文化"></textarea>
+                    </div>
+
+                    <!-- 自定义AI提示词 -->
+                    <div class="form-group">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                            <span>自定义AI提示词</span>
+                            <span class="text-muted" style="font-size: 12px;">（可选，高级用户使用）</span>
+                            <button type="button" class="btn-icon-sm" onclick="toggleCustomPrompt()" title="展开/收起">
+                                <span id="prompt-toggle-icon">▼</span>
+                            </button>
+                        </label>
+                        <div id="custom-prompt-area" style="display: none;">
+                            <textarea id="custom-prompt" class="form-control" rows="4" 
+                                      placeholder="输入自定义的AI系统提示词，会覆盖默认的写作提示词..."></textarea>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+                                💡 提示：自定义提示词可以精确控制AI的写作行为和风格
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 字数控制 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            目标字数
+                            <span id="word-count-display" style="color: var(--primary-color); font-weight: 500; margin-left: 8px;">800字</span>
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <input type="range" id="word-count-slider" class="form-range" 
+                                   min="100" max="5000" step="100" value="800"
+                                   oninput="syncWordCount(this.value)"
+                                   style="flex: 1;">
+                            <input type="number" id="word-count-input" class="form-control" 
+                                   min="100" max="5000" step="50" value="800"
+                                   oninput="syncWordCountFromInput(this.value)"
+                                   style="width: 100px;">
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                            <span>100字</span>
+                            <span>5000字</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="stream-mode" checked style="width: 16px; height: 16px;">
+                            <span>流式输出</span>
+                            <span class="text-muted" style="font-size: 12px;">（实时显示生成内容）</span>
+                        </label>
+                    </div>
+
+                    <button id="generate-btn" class="btn btn-primary" onclick="generateArticle()">
+                        <span>🤖</span>
+                        <span>生成文章</span>
+                    </button>
+                </div>
+
+                <div id="result-area" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">生成结果</h3>
+                        <span id="actual-word-count" style="color: var(--text-muted); font-size: 0.9rem;"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">
+                                文章标题
+                                <span id="title-loading" style="display: none; color: var(--primary-color); font-size: 12px; margin-left: 8px;">
+                                    <span class="loading-spinner loading-spinner-sm"></span> AI生成中...
+                                </span>
+                            </label>
+                            <input type="text" id="article-title" class="form-control" placeholder="AI将自动生成标题，也可手动修改">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">文章内容</label>
+                            <textarea id="article-content" class="form-control" rows="15" oninput="updateActualWordCount()"></textarea>
+                        </div>
+                        
+                        <!-- AI修改区域 -->
+                        <div class="form-group">
+                            <label class="form-label">AI修改</label>
+                            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                <input type="text" id="revision-request" class="form-control" 
+                                       placeholder="输入修改要求，例如：让语气更正式、增加具体例子、缩短到500字...">
+                                <button class="btn btn-secondary" onclick="reviseArticle()" id="revise-btn">
+                                    ✏️ 修改
+                                </button>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                💡 提示：可以要求AI调整风格、增删内容、改变结构等
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">保存到版块</label>
+                            <select id="save-board" class="form-control">
+                                <option value="">选择版块...</option>
+                                {% for board in boards %}
+                                <option value="{{ board.id }}">{{ board.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn btn-secondary" onclick="copyArticle()">📋 复制</button>
+                            <button class="btn btn-primary" onclick="saveAsPost()">💾 保存为帖子</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="text-align: center; padding: 40px;">
+        <div class="loading-spinner"></div>
+        <p style="margin-top: 16px;">AI正在创作中...</p>
+    </div>
+</div>
+
+<style>
+.form-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    outline: none;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.form-range::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+.form-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+/* 预设按钮样式 */
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+    .preset-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.preset-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.preset-icon {
+    font-size: 1.5rem;
+}
+
+.preset-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* 整活风格选项 */
+.fun-style-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fun-style-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.fun-style-option input[type="radio"] {
+    display: none;
+}
+
+.fun-style-label {
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.fun-style-option input[type="radio"]:checked + .fun-style-label {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.fun-style-option:hover .fun-style-label {
+    border-color: var(--primary-color);
+}
+
+.btn-icon-sm {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.btn-icon-sm:hover {
+    color: var(--primary-color);
+}
+
+.btn-icon-sm.expanded {
+    transform: rotate(180deg);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 写作类型预设配置
+const PRESETS = {
+    literature: {
+        name: '文学创作',
+        description: '散文、小说、诗歌、故事等文学作品',
+        wordCount: 1000,
+        placeholder: '例如：写一篇关于秋天的散文、创作一个温馨的短篇故事...'
+    },
+    practical: {
+        name: '应用文',
+        description: '书信、通知、申请、总结、报告等实用文体',
+        wordCount: 500,
+        placeholder: '例如：写一封感谢信、起草一份活动通知、写一份工作总结...'
+    },
+    expository: {
+        name: '说明文',
+        description: '介绍事物、解释原理、说明方法的文章',
+        wordCount: 800,
+        placeholder: '例如：介绍一种科技产品、解释某个科学原理、说明某种方法...'
+    },
+    argumentative: {
+        name: '议论文',
+        description: '表达观点、论证道理的文章',
+        wordCount: 1000,
+        placeholder: '例如：论述读书的重要性、分析某个社会现象、评论某个观点...'
+    },
+    fun: {
+        name: '整活写作',
+        description: '无限制、贴吧风格、幽默、鲁迅风格等',
+        wordCount: 600,
+        placeholder: '例如：用鲁迅的风格吐槽加班、写一篇贴吧风格的帖子、整一个阴阳怪气的文案...'
+    }
+};
+
+// 整活风格配置
+const FUN_STYLES = {
+    unlimited: {
+        name: '无限制',
+        prompt: '不受任何限制，自由发挥，可以使用任何风格和表达方式'
+    },
+    tieba: {
+        name: '贴吧风格',
+        prompt: '使用贴吧老哥的说话方式，可以用"老哥"、"兄弟"等称呼，语气接地气，可以适当使用网络用语和表情符号'
+    },
+    humor: {
+        name: '幽默搞笑',
+        prompt: '用幽默搞笑的方式写作，可以使用夸张、反讽、自嘲等手法，让读者会心一笑'
+    },
+    luxun: {
+        name: '鲁迅风格',
+        prompt: `模仿鲁迅先生的写作风格进行创作。
+
+## 语言特点
+- 文白夹杂：适当使用文言词汇和句式，如"然而"、"却"、"罢了"、"大抵"、"倘若"、"横竖"
+- 短句为主：句子简洁有力，节奏明快，善用短句增强气势
+- 反复与排比：通过重复和排比强化情感，如"我实在无话可说"的反复
+- 口语化表达：穿插北京方言和口语，增添生活气息
+
+## 修辞手法
+- 反语讽刺：用正话反说揭示荒谬，如"正人君子"实指伪君子
+- 冷峻幽默：以冷静笔调写荒诞事，让人笑中带泪
+- 隐喻象征：用具体意象暗示抽象概念，如"铁屋子"、"吃人"
+- 夸张对比：通过极端对比凸显矛盾
+
+## 思想内核
+- 批判精神：对社会弊病、人性弱点的深刻剖析
+- 启蒙意识：唤醒民众，反对愚昧和麻木
+- 悲悯情怀：对底层人民的同情，对弱者的关注
+- 自我解剖：不回避自身的矛盾和局限
+
+## 常见句式
+- "我向来是不惮以最坏的恶意来推测中国人的"
+- "从来如此，便对么？"
+- "不在沉默中爆发，就在沉默中灭亡"
+- "哀其不幸，怒其不争"
+- "真的猛士，敢于直面惨淡的人生"
+
+## 创作要求
+- 可以模仿杂文的犀利、小说的冷峻、散文的深情
+- 不要生硬堆砌鲁迅名句，要融会贯通
+- 保持批判性思考，但不流于刻薄
+- 文字要有力量感和穿透力`
+    },
+    custom: {
+        name: '自定义',
+        prompt: ''
+    }
+};
+
+let currentPreset = null;
+
+// 应用预设
+function applyPreset(event, presetKey) {
+    const preset = PRESETS[presetKey];
+    if (!preset) return;
+    
+    // 更新UI状态
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    currentPreset = presetKey;
+    
+    // 应用预设值
+    document.getElementById('topic').placeholder = preset.placeholder;
+    syncWordCount(preset.wordCount);
+    document.getElementById('word-count-input').value = preset.wordCount;
+    document.getElementById('word-count-slider').value = preset.wordCount;
+    
+    // 显示/隐藏整活选项
+    const funOptions = document.getElementById('fun-options');
+    if (presetKey === 'fun') {
+        funOptions.style.display = 'block';
+    } else {
+        funOptions.style.display = 'none';
+    }
+    
+    Utils.showToast(`已选择"${preset.name}"`, 'success');
+}
+
+// 监听整活风格变化
+document.addEventListener('DOMContentLoaded', function() {
+    const funStyleRadios = document.querySelectorAll('input[name="fun-style"]');
+    funStyleRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const customInput = document.getElementById('custom-fun-style');
+            if (this.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+            }
+        });
+    });
+});
+
+// 切换自定义提示词区域
+function toggleCustomPrompt() {
+    const area = document.getElementById('custom-prompt-area');
+    const icon = document.getElementById('prompt-toggle-icon');
+    if (area.style.display === 'none') {
+        area.style.display = 'block';
+        icon.classList.add('expanded');
+        icon.textContent = '▲';
+    } else {
+        area.style.display = 'none';
+        icon.classList.remove('expanded');
+        icon.textContent = '▼';
+    }
+}
+
+// 同步字数滑块和输入框
+function syncWordCount(value) {
+    value = Math.max(100, Math.min(5000, parseInt(value) || 800));
+    document.getElementById('word-count-input').value = value;
+    document.getElementById('word-count-display').textContent = value + '字';
+}
+
+function syncWordCountFromInput(value) {
+    value = Math.max(100, Math.min(5000, parseInt(value) || 800));
+    document.getElementById('word-count-slider').value = value;
+    document.getElementById('word-count-display').textContent = value + '字';
+}
+
+// 获取整活风格提示词
+function getFunStylePrompt() {
+    const selectedStyle = document.querySelector('input[name="fun-style"]:checked');
+    if (!selectedStyle) return '';
+    
+    const styleKey = selectedStyle.value;
+    if (styleKey === 'custom') {
+        return document.getElementById('custom-fun-style').value.trim();
+    }
+    return FUN_STYLES[styleKey]?.prompt || '';
+}
+
+// 更新实际字数显示
+function updateActualWordCount() {
+    const content = document.getElementById('article-content').value;
+    const count = content.length;
+    document.getElementById('actual-word-count').textContent = `实际字数: ${count}字`;
+}
+
+async function generateArticle() {
+    const topic = document.getElementById('topic').value.trim();
+    const wordCount = parseInt(document.getElementById('word-count-input').value) || 800;
+    const customPrompt = document.getElementById('custom-prompt').value.trim();
+    const streamMode = document.getElementById('stream-mode').checked;
+
+    if (!currentPreset) {
+        Utils.showToast('请先选择写作类型', 'warning');
+        return;
+    }
+
+    if (!topic) {
+        Utils.showToast('请输入写作要求', 'warning');
+        return;
+    }
+
+    if (wordCount < 100 || wordCount > 5000) {
+        Utils.showToast('字数必须在100-5000之间', 'warning');
+        return;
+    }
+
+    // 构建请求参数
+    const params = {
+        topic: topic,
+        word_count: wordCount,
+        preset: currentPreset,
+        custom_prompt: customPrompt || null
+    };
+
+    // 如果是整活写作，添加风格参数
+    if (currentPreset === 'fun') {
+        params.fun_style = getFunStylePrompt();
+    }
+
+    if (streamMode) {
+        await generateArticleStream(params);
+    } else {
+        await generateArticleNormal(params);
+    }
+}
+
+async function generateArticleNormal(params) {
+    document.getElementById('loading-overlay').style.display = 'flex';
+
+    try {
+        const response = await Utils.post('/ai/api/write/generate', params);
+
+        if (response.success) {
+            document.getElementById('article-content').value = response.content;
+            document.getElementById('article-title').value = response.title || '';
+            document.getElementById('result-area').style.display = 'block';
+            updateActualWordCount();
+            Utils.showToast('文章生成成功！', 'success');
+        } else {
+            Utils.showToast(response.message || '生成失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('生成失败：' + e.message, 'danger');
+    } finally {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+}
+
+async function generateArticleStream(params) {
+    document.getElementById('article-content').value = '';
+    document.getElementById('article-title').value = '';
+    document.getElementById('result-area').style.display = 'block';
+    document.getElementById('actual-word-count').textContent = '实际字数: 0字';
+    document.getElementById('title-loading').style.display = 'inline';
+
+    const generateBtn = document.getElementById('generate-btn');
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="loading-spinner loading-spinner-sm"></span> 生成中...';
+
+    try {
+        const response = await fetch('/ai/api/write/generate/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || '请求失败');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const contentArea = document.getElementById('article-content');
+        let content = '';
+        let titleReceived = false;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    let data = line.substring(6);
+
+                    if (data === '[DONE]') {
+                        break;
+                    }
+
+                    // 检查是否是标题数据
+                    if (data.startsWith('[TITLE]:')) {
+                        const title = data.substring(8);
+                        document.getElementById('article-title').value = title;
+                        document.getElementById('title-loading').style.display = 'none';
+                        titleReceived = true;
+                        continue;
+                    }
+
+                    // 处理换行符
+                    data = data.replace(/\\n/g, '\n');
+                    content += data;
+                    contentArea.value = content;
+                    contentArea.scrollTop = contentArea.scrollHeight;
+                    updateActualWordCount();
+                }
+            }
+        }
+
+        // 如果没有收到标题，隐藏加载状态
+        if (!titleReceived) {
+            document.getElementById('title-loading').style.display = 'none';
+        }
+
+        Utils.showToast('文章生成成功！', 'success');
+    } catch (e) {
+        Utils.showToast('生成失败：' + e.message, 'danger');
+        document.getElementById('title-loading').style.display = 'none';
+    } finally {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<span>🤖</span><span>生成文章</span>';
+    }
+}
+
+function copyArticle() {
+    const content = document.getElementById('article-content').value;
+    navigator.clipboard.writeText(content).then(() => {
+        Utils.showToast('已复制到剪贴板', 'success');
+    });
+}
+
+async function reviseArticle() {
+    const originalContent = document.getElementById('article-content').value.trim();
+    const revisionRequest = document.getElementById('revision-request').value.trim();
+    const wordCount = parseInt(document.getElementById('word-count-input').value) || 800;
+
+    if (!originalContent) {
+        Utils.showToast('请先生成文章内容', 'warning');
+        return;
+    }
+
+    if (!revisionRequest) {
+        Utils.showToast('请输入修改要求', 'warning');
+        return;
+    }
+
+    const reviseBtn = document.getElementById('revise-btn');
+    const originalBtnText = reviseBtn.innerHTML;
+    reviseBtn.disabled = true;
+    reviseBtn.innerHTML = '<span class="loading-spinner loading-spinner-sm"></span> 修改中...';
+
+    // 清空内容区域，准备接收新内容
+    document.getElementById('article-content').value = '';
+    document.getElementById('actual-word-count').textContent = '实际字数: 0字';
+
+    try {
+        const response = await fetch('/ai/api/write/revise', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                original_content: originalContent,
+                revision_request: revisionRequest,
+                word_count: wordCount
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || '请求失败');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const contentArea = document.getElementById('article-content');
+        let content = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    let data = line.substring(6);
+
+                    if (data === '[DONE]') {
+                        break;
+                    }
+
+                    data = data.replace(/\\n/g, '\n');
+                    content += data;
+                    contentArea.value = content;
+                    contentArea.scrollTop = contentArea.scrollHeight;
+                    updateActualWordCount();
+                }
+            }
+        }
+
+        // 清空修改要求输入框
+        document.getElementById('revision-request').value = '';
+        Utils.showToast('文章修改成功！', 'success');
+    } catch (e) {
+        Utils.showToast('修改失败：' + e.message, 'danger');
+        // 恢复原内容
+        document.getElementById('article-content').value = originalContent;
+        updateActualWordCount();
+    } finally {
+        reviseBtn.disabled = false;
+        reviseBtn.innerHTML = originalBtnText;
+    }
+}
+
+async function saveAsPost() {
+    const title = document.getElementById('article-title').value.trim();
+    const content = document.getElementById('article-content').value.trim();
+    const boardId = document.getElementById('save-board').value;
+
+    if (!title || !content || !boardId) {
+        Utils.showToast('请填写标题、内容并选择版块', 'warning');
+        return;
+    }
+
+    const response = await Utils.post('/ai/api/write/save', {
+        title,
+        content,
+        board_id: boardId
+    });
+
+    if (response.success) {
+        Utils.showToast('保存成功！', 'success');
+        setTimeout(() => {
+            window.location.href = '/post/' + response.post_id;
+        }, 1000);
+    } else {
+        Utils.showToast(response.message || '保存失败', 'danger');
+    }
+}
+</script>
+{% endblock %}

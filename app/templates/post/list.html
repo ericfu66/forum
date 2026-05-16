@@ -1,0 +1,666 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ board.name if board else '所有帖子' }} - {{ site_name }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Stagger animation */
+@keyframes staggerFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stagger-animation {
+    animation: staggerFadeUp 0.5s var(--ease-out) both;
+}
+
+.stagger-animation:nth-child(1) { animation-delay: 0.05s; }
+.stagger-animation:nth-child(2) { animation-delay: 0.1s; }
+.stagger-animation:nth-child(3) { animation-delay: 0.15s; }
+.stagger-animation:nth-child(4) { animation-delay: 0.2s; }
+.stagger-animation:nth-child(5) { animation-delay: 0.25s; }
+.stagger-animation:nth-child(6) { animation-delay: 0.3s; }
+.stagger-animation:nth-child(7) { animation-delay: 0.35s; }
+.stagger-animation:nth-child(8) { animation-delay: 0.4s; }
+
+.post-list-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+}
+
+/* Breadcrumb */
+.breadcrumb-premium {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+}
+
+.breadcrumb-premium a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--duration-fast);
+}
+
+.breadcrumb-premium a:hover {
+    color: var(--primary);
+}
+
+.breadcrumb-premium .separator {
+    color: var(--text-faint);
+}
+
+.breadcrumb-premium .current {
+    color: var(--text-strong);
+    font-weight: 500;
+}
+
+/* Board Header */
+.board-header-premium {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 32px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+}
+
+.board-icon-large {
+    font-size: 48px;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-soft);
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+}
+
+.board-header-info h1 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0 0 6px;
+}
+
+.board-header-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    line-height: 1.6;
+}
+
+.board-stats {
+    display: flex;
+    gap: 16px;
+}
+
+.board-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.board-stat-value {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+/* Action Bar */
+.action-bar-premium {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.action-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.post-count-text {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.view-switcher {
+    display: flex;
+    background: var(--bg-muted);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+}
+
+.view-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 5px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+    font-family: var(--font-body);
+}
+
+.view-btn.active {
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    box-shadow: var(--shadow-xs);
+}
+
+.view-btn:hover:not(.active) {
+    color: var(--text-body);
+}
+
+/* Premium Button */
+.btn-premium {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all var(--duration-normal) var(--ease-out);
+    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.25);
+}
+
+.btn-premium:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+    color: white;
+}
+
+/* Posts List */
+.posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Posts Grid */
+.posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+/* Post Card */
+.post-card-premium {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    position: relative;
+}
+
+.post-card-premium:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+}
+
+.post-card-premium.pinned {
+    border-left: 3px solid var(--accent-amber);
+    background: linear-gradient(to right, rgba(245,158,11,0.03), var(--bg-surface));
+}
+
+.post-card-premium.post-card-grid {
+    padding: 20px;
+}
+
+/* Status badges */
+.post-status-indicator {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.status-badge-premium {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+}
+
+.status-badge-premium.pinned {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-amber);
+}
+
+.status-badge-premium.ai {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+/* Post card inner */
+.post-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.post-card-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.post-card-author-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-body);
+}
+
+.post-card-time {
+    font-size: 12px;
+    color: var(--text-faint);
+}
+
+.post-card-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0 0 8px;
+    line-height: 1.4;
+}
+
+.post-card-excerpt {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin: 0 0 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.post-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.post-card-stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.post-card-stat {
+    font-size: 12px;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.post-card-tags {
+    display: flex;
+    gap: 6px;
+}
+
+.post-tag {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
+/* Media indicators */
+.post-card-media-indicators {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.media-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--bg-muted);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-body);
+}
+
+/* Thumbnail */
+.post-card-thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.post-card-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.post-card-with-thumb {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.post-card-with-thumb .post-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-state-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0 0 8px;
+}
+
+.empty-state-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0 0 20px;
+}
+
+/* Pagination */
+.pagination-premium {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 32px;
+}
+
+.page-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text-body);
+    text-decoration: none;
+    background: var(--bg-surface);
+    transition: all var(--duration-fast);
+    font-family: var(--font-body);
+}
+
+.page-btn:hover:not(.active) {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.page-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .post-list-container { padding: 20px 16px 40px; }
+    .board-header-premium { flex-direction: column; text-align: center; gap: 16px; padding: 24px; }
+    .board-icon-large { width: 64px; height: 64px; font-size: 36px; }
+    .board-header-info h1 { font-size: 18px; }
+    .action-bar-premium { flex-direction: column; align-items: flex-start; }
+    .post-card-premium { padding: 16px; }
+    .posts-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .post-list-container { padding: 16px 12px 32px; }
+    .board-header-premium { padding: 20px; }
+    .post-card-title { font-size: 15px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="post-list-container">
+    <!-- 面包屑导航 -->
+    <nav class="breadcrumb-premium">
+        <a href="{{ url_for('main.index') }}">🏠 首页</a>
+        <span class="separator">/</span>
+        {% if board %}
+        <span class="current">{{ board.icon }} {{ board.name }}</span>
+        {% else %}
+        <span class="current">📋 所有帖子</span>
+        {% endif %}
+    </nav>
+
+    <!-- 版块信息 -->
+    {% if board %}
+    <div class="board-header-premium stagger-animation">
+        <div class="board-icon-large">{{ board.icon }}</div>
+        <div class="board-header-info">
+            <h1>{{ board.name }}</h1>
+            <p class="board-header-desc">{{ board.description or '暂无描述' }}</p>
+            <div class="board-stats">
+                <div class="board-stat">
+                    <span>📝</span>
+                    <span class="board-stat-value">{{ total }}</span>
+                    <span>篇帖子</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 操作栏 -->
+    <div class="action-bar-premium">
+        <div class="action-bar-left">
+            <span class="post-count-text">
+                {% if board %}共 {{ total }} 篇帖子{% else %}全站共 {{ total }} 篇帖子{% endif %}
+            </span>
+            <div class="view-switcher" id="view-switcher">
+                <button class="view-btn active" data-view="list" onclick="switchView('list')">
+                    <span>☰</span> 列表
+                </button>
+                <button class="view-btn" data-view="grid" onclick="switchView('grid')">
+                    <span>▦</span> 网格
+                </button>
+            </div>
+        </div>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('post.create') }}" class="btn btn-premium">
+            ✏️ 发表新帖
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- 帖子列表 -->
+    <div class="posts-list" id="posts-container">
+        {% for post in posts %}
+        <article class="post-card-premium stagger-animation {% if post.is_pinned %}pinned{% endif %}" 
+                 onclick="location.href='{{ url_for('post.detail', post_id=post.id) }}'">
+            {% if post.is_pinned or post.is_ai_generated %}
+            <div class="post-status-indicator">
+                {% if post.is_pinned %}
+                <span class="status-badge-premium pinned">📌 置顶</span>
+                {% endif %}
+                {% if post.is_ai_generated %}
+                <span class="status-badge-premium ai">🤖 AI</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <div class="{% if post.images and post.images|length > 0 %}post-card-with-thumb{% endif %}">
+                {% if post.images and post.images|length > 0 %}
+                <div class="post-card-thumbnail">
+                    <img src="{{ post.images[0] }}" alt="帖子图片" loading="lazy">
+                </div>
+                {% endif %}
+                
+                <div class="post-card-body">
+                    <div class="post-card-header">
+                        <div class="post-card-author">
+                            <img src="{{ post.author.avatar }}" alt="avatar" class="avatar avatar-sm">
+                            <span class="post-card-author-name">{{ post.author.username }}</span>
+                            {% if post.author.level %}
+                            <span class="level-badge-mini" style="display: inline-flex; align-items: center; padding: 1px 6px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 4px;">
+                                Lv.{{ post.author.level }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <span class="post-card-time" data-time="{{ post.created_at }}">{{ post.created_at }}</span>
+                    </div>
+                    
+                    <h3 class="post-card-title">{{ post.title }}</h3>
+                    <p class="post-card-excerpt">{{ post.content|truncate_md(180) }}</p>
+                    
+                    <!-- 媒体指示器 -->
+                    {% if (post.images and post.images|length > 0) or post.audio_url %}
+                    <div class="post-card-media-indicators">
+                        {% if post.images and post.images|length > 0 %}
+                        <span class="media-indicator">🖼️ {{ post.images|length }}张图片</span>
+                        {% endif %}
+                        {% if post.audio_url %}
+                        <span class="media-indicator">🎵 语音</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="post-card-footer">
+                        <div class="post-card-stats">
+                            <span class="post-card-stat">👁️ {{ post.view_count }}</span>
+                            <span class="post-card-stat">💬 {{ post.reply_count }}</span>
+                            <span class="post-card-stat">👍 {{ post.like_count }}</span>
+                        </div>
+                        {% if post.board and not board %}
+                        <div class="post-card-tags">
+                            <span class="post-tag">{{ post.board.icon }} {{ post.board.name }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+
+        {% if not posts %}
+        <div class="empty-state stagger-animation">
+            <div class="empty-state-icon">📭</div>
+            <h3 class="empty-state-title">暂无帖子</h3>
+            <p class="empty-state-desc">
+                {% if current_user.is_authenticated %}
+                来发表第一篇帖子吧！
+                {% else %}
+                登录后即可发表帖子
+                {% endif %}
+            </p>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('post.create') }}" class="btn btn-premium">发表第一篇帖子</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="btn btn-premium">登录后发帖</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 分页 -->
+    {% if total > 20 %}
+    <nav class="pagination-premium">
+        {% if page > 1 %}
+        <a href="{% if board %}{{ url_for('post.board', slug=board.slug, page=page-1) }}{% else %}{{ url_for('post.post_list', page=page-1) }}{% endif %}"
+           class="page-btn">← 上一页</a>
+        {% endif %}
+
+        <span class="page-btn active">第 {{ page }} 页</span>
+
+        {% if (page * 20) < total %}
+        <a href="{% if board %}{{ url_for('post.board', slug=board.slug, page=page+1) }}{% else %}{{ url_for('post.post_list', page=page+1) }}{% endif %}"
+           class="page-btn">下一页 →</a>
+        {% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 视图切换功能
+function switchView(view) {
+    const container = document.getElementById('posts-container');
+    const buttons = document.querySelectorAll('.view-btn');
+    
+    buttons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    
+    if (view === 'grid') {
+        container.classList.remove('posts-list');
+        container.classList.add('posts-grid');
+        container.querySelectorAll('.post-card-premium').forEach(card => {
+            card.classList.add('post-card-grid');
+        });
+    } else {
+        container.classList.remove('posts-grid');
+        container.classList.add('posts-list');
+        container.querySelectorAll('.post-card-premium').forEach(card => {
+            card.classList.remove('post-card-grid');
+        });
+    }
+    
+    // 保存偏好
+    localStorage.setItem('postViewPreference', view);
+}
+
+// 恢复视图偏好
+document.addEventListener('DOMContentLoaded', function() {
+    const savedView = localStorage.getItem('postViewPreference');
+    if (savedView) {
+        switchView(savedView);
+    }
+});
+</script>
+{% endblock %}

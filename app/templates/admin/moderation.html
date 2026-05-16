@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}内容审核 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>🛡️ 内容审核</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2rem; font-weight: bold; color: var(--warning-color);">{{ pending_count }}</div>
+            <div style="color: var(--text-muted);">待审核</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2rem; font-weight: bold; color: var(--success-color);">{{ approved_today }}</div>
+            <div style="color: var(--text-muted);">今日通过</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2rem; font-weight: bold; color: var(--danger-color);">{{ rejected_today }}</div>
+            <div style="color: var(--text-muted);">今日拒绝</div>
+        </div>
+    </div>
+
+    <!-- 标签页切换 -->
+    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <a href="{{ url_for('admin.moderation', tab='pending') }}" 
+           class="btn {{ 'btn-primary' if tab == 'pending' or not tab else 'btn-outline' }}">
+            待审核 ({{ pending_count }})
+        </a>
+        <a href="{{ url_for('admin.moderation', tab='rejected') }}" 
+           class="btn {{ 'btn-primary' if tab == 'rejected' else 'btn-outline' }}">
+            已拒绝
+        </a>
+    </div>
+
+    <!-- 内容列表 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <h3 class="card-title">{{ '待审核内容' if tab == 'pending' or not tab else '已拒绝内容' }}</h3>
+        
+        {% if pending_items %}
+        <div style="margin-top: 16px;">
+            {% for item in pending_items %}
+            <div class="moderation-item" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div>
+                        <span class="badge badge-{{ 'primary' if item.content_type == 'post' else 'secondary' }}">
+                            {{ '帖子' if item.content_type == 'post' else '评论' }}
+                        </span>
+                        <span style="color: var(--text-muted); margin-left: 8px;">
+                            {{ item.created_at[:16] if item.created_at else '' }}
+                        </span>
+                        {% if item.author %}
+                        <span style="margin-left: 8px;">
+                            作者: <strong>{{ item.author.username }}</strong>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">
+                            置信度: <strong style="color: {{ 'var(--danger-color)' if item.ai_confidence >= 0.8 else 'var(--warning-color)' if item.ai_confidence >= 0.6 else 'var(--success-color)' }}">
+                                {{ (item.ai_confidence * 100)|round|int }}%
+                            </strong>
+                        </span>
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg-secondary); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="margin: 0; white-space: pre-wrap; word-break: break-word;">{{ item.content_preview }}</p>
+                </div>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                    {% for category in item.ai_categories %}
+                    <span class="badge" style="background: var(--bg-tertiary);">
+                        {{ '🚫 垃圾内容' if category == 'spam' else '⚠️ 不当内容' if category == 'inappropriate' else '🔒 敏感话题' if category == 'sensitive' else category }}
+                    </span>
+                    {% endfor %}
+                </div>
+                
+                {% if item.ai_reasons %}
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                    <strong>AI分析：</strong>{{ item.ai_reasons|join('；') }}
+                </div>
+                {% endif %}
+                
+                <div style="display: flex; gap: 8px;">
+                    {% if tab == 'pending' or not tab %}
+                    <button onclick="approveContent({{ item.id }})" class="btn btn-primary btn-sm">
+                        ✓ 通过
+                    </button>
+                    <button onclick="rejectContent({{ item.id }})" class="btn btn-sm" style="background: var(--danger-color); color: white;">
+                        ✗ 拒绝
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('post.detail', post_id=item.content_id) if item.content_type == 'post' else '#' }}" 
+                       class="btn btn-ghost btn-sm" target="_blank">
+                        查看原文
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- 分页 -->
+        {% if total > per_page %}
+        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+            {% if page > 1 %}
+            <a href="{{ url_for('admin.moderation', page=page-1, tab=tab) }}" class="btn btn-outline btn-sm">上一页</a>
+            {% endif %}
+            <span class="btn btn-ghost btn-sm" style="cursor: default;">第 {{ page }} 页 / 共 {{ ((total - 1) // per_page) + 1 }} 页</span>
+            {% if (page * per_page) < total %}
+            <a href="{{ url_for('admin.moderation', page=page+1, tab=tab) }}" class="btn btn-outline btn-sm">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <div style="font-size: 3rem; margin-bottom: 16px;">🎉</div>
+            <p>暂无待审核内容</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 审核历史 -->
+    <div class="card">
+        <h3 class="card-title">最近审核记录</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color);">
+                    <th style="padding: 12px; text-align: left;">时间</th>
+                    <th style="padding: 12px; text-align: left;">类型</th>
+                    <th style="padding: 12px; text-align: left;">内容预览</th>
+                    <th style="padding: 12px; text-align: left;">AI判定</th>
+                    <th style="padding: 12px; text-align: left;">最终结果</th>
+                    <th style="padding: 12px; text-align: left;">审核人</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in history %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 12px; color: var(--text-muted);">{{ item.created_at[:16] if item.created_at else '-' }}</td>
+                    <td style="padding: 12px;">
+                        <span class="badge badge-{{ 'primary' if item.content_type == 'post' else 'secondary' }}">
+                            {{ '帖子' if item.content_type == 'post' else '评论' }}
+                        </span>
+                    </td>
+                    <td style="padding: 12px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ item.content_preview[:50] }}{{ '...' if item.content_preview|length > 50 else '' }}
+                    </td>
+                    <td style="padding: 12px;">
+                        <span class="badge badge-{{ 'success' if item.ai_action == 'approve' else 'warning' if item.ai_action == 'hold' else 'danger' }}">
+                            {{ '通过' if item.ai_action == 'approve' else '待审' if item.ai_action == 'hold' else '拒绝' }}
+                        </span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">{{ (item.ai_confidence * 100)|round|int }}%</span>
+                    </td>
+                    <td style="padding: 12px;">
+                        {% if item.final_action %}
+                        <span class="badge badge-{{ 'success' if item.final_action == 'approve' else 'danger' }}">
+                            {{ '通过' if item.final_action == 'approve' else '拒绝' }}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 12px;">{{ item.moderator.username if item.moderator else 'AI自动' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not history %}
+                <tr>
+                    <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-muted);">暂无审核记录</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function approveContent(logId) {
+    const note = prompt('审核备注（可选）：', '');
+    if (note === null) return;
+    
+    fetch('/admin/api/moderation/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            log_id: logId,
+            action: 'approve',
+            note: note
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('已通过');
+            location.reload();
+        } else {
+            alert('操作失败: ' + data.message);
+        }
+    });
+}
+
+function rejectContent(logId) {
+    const note = prompt('拒绝原因：', '');
+    if (note === null) return;
+    
+    fetch('/admin/api/moderation/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            log_id: logId,
+            action: 'reject',
+            note: note
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('已拒绝');
+            location.reload();
+        } else {
+            alert('操作失败: ' + data.message);
+        }
+    });
+}
+</script>
+{% endblock %}

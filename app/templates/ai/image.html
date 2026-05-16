@@ -1,0 +1,821 @@
+{% extends "base.html" %}
+
+{% block title %}AI绘图 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🎨 AI绘图</h2>
+                    <p class="text-muted">输入描述，让AI为你生成图片。支持上传参考图进行图生图。</p>
+                    <div id="daily-limit-info" style="margin-top: 8px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 0.9rem;">
+                        <span id="remaining-count">加载中...</span>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">图片描述 <span style="color: var(--danger-color);">*</span></label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <textarea id="prompt" class="form-control" rows="3" style="flex: 1;"
+                                      placeholder="描述你想要生成的图片，例如：一只可爱的橘猫坐在窗台上"></textarea>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="generatePromptWithAI()">
+                                ✨ AI优化提示词
+                            </button>
+                            <select id="prompt-style" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.85rem;">
+                                <option value="">风格（可选）</option>
+                                <option value="anime">动漫风格</option>
+                                <option value="realistic">写实风格</option>
+                                <option value="oil painting">油画风格</option>
+                                <option value="watercolor">水彩风格</option>
+                                <option value="pixel art">像素风格</option>
+                                <option value="3d render">3D渲染</option>
+                                <option value="sketch">素描风格</option>
+                            </select>
+                            <span id="prompt-generating" style="display: none; color: var(--text-muted); font-size: 0.85rem;">
+                                <span class="loading-spinner loading-spinner-sm"></span> 生成中...
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">负面提示词（可选）</label>
+                        <textarea id="negative-prompt" class="form-control" rows="2" 
+                                  placeholder="描述你不想在图片中出现的元素，例如：模糊, 低质量, 变形"></textarea>
+                        <small id="negative-prompt-hint" style="color: var(--text-muted);">部分模型不支持负面提示词</small>
+                    </div>
+
+                    <!-- 参考图上传区域 -->
+                    <div class="form-group">
+                        <label class="form-label">参考图（可选）</label>
+                        <div id="reference-upload-area" class="upload-area">
+                            <input type="file" id="reference-input" accept="image/*" style="display: none;" onchange="handleReferenceUpload(event)">
+                            <div id="reference-preview" style="display: none;">
+                                <img id="reference-image" src="" alt="参考图预览">
+                                <button type="button" class="btn btn-sm btn-danger remove-btn" onclick="removeReferenceImage()">✕</button>
+                            </div>
+                            <div id="reference-placeholder" onclick="document.getElementById('reference-input').click()">
+                                <span style="font-size: 2rem;">📷</span>
+                                <p>点击上传参考图</p>
+                                <small style="color: var(--text-muted);">支持 JPG、PNG、WebP 格式</small>
+                            </div>
+                        </div>
+                        <small id="reference-hint" style="color: var(--text-muted);">上传参考图后，AI将基于参考图生成相似风格的图片</small>
+                    </div>
+
+                    <!-- 参考图强度滑块 -->
+                    <div id="strength-control" class="form-group" style="display: none;">
+                        <label class="form-label">参考图强度: <span id="strength-value">0.65</span></label>
+                        <input type="range" id="image-strength" class="form-range" 
+                               min="0.1" max="1" step="0.05" value="0.65"
+                               oninput="document.getElementById('strength-value').textContent = this.value">
+                        <small style="color: var(--text-muted);">越高越接近参考图，越低越自由发挥</small>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <!-- API选择 -->
+                        <div class="form-group">
+                            <label class="form-label">API选择</label>
+                            <select id="api-select" class="form-control" onchange="onApiChange()">
+                                <option value="primary">主API (默认)</option>
+                                <option value="fallback">备用API (Kolors)</option>
+                            </select>
+                            <small id="api-info" style="color: var(--text-muted);"></small>
+                        </div>
+
+                        <!-- 模型选择 -->
+                        <div class="form-group">
+                            <label class="form-label">模型</label>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="model" class="form-control" onchange="onModelChange()" style="flex: 1;">
+                                    <option value="">加载中...</option>
+                                </select>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomModelInput()" title="输入自定义模型">
+                                    ✏️
+                                </button>
+                            </div>
+                            <input type="text" id="custom-model-input" class="form-control" style="display: none; margin-top: 8px;"
+                                   placeholder="输入自定义模型ID，如 dall-e-3" onchange="onCustomModelChange()">
+                            <small id="model-provider" style="color: var(--text-muted);"></small>
+                        </div>
+
+                        <!-- 图片尺寸 -->
+                        <div class="form-group">
+                            <label class="form-label">图片尺寸</label>
+                            <select id="image-size" class="form-control">
+                                <option value="1024x1024">1024×1024 (正方形)</option>
+                            </select>
+                        </div>
+
+                        <!-- 生成数量 -->
+                        <div class="form-group">
+                            <label class="form-label">生成数量</label>
+                            <select id="batch-size" class="form-control">
+                                <option value="1">1张</option>
+                                <option value="2">2张</option>
+                                <option value="4">4张</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 高级选项 -->
+                    <details style="margin-top: 16px;">
+                        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.9rem;">
+                            ⚙️ 高级选项
+                        </summary>
+                        <div style="margin-top: 12px; padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                                <div class="form-group">
+                                    <label class="form-label">推理步数</label>
+                                    <input type="number" id="inference-steps" class="form-control" 
+                                           value="20" min="1" max="100">
+                                    <small style="color: var(--text-muted);">步数越多质量越高，但速度越慢</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">引导系数</label>
+                                    <input type="number" id="guidance-scale" class="form-control" 
+                                           value="7.5" min="0" max="20" step="0.5">
+                                    <small style="color: var(--text-muted);">越高越贴近提示词</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">随机种子（可选）</label>
+                                    <input type="number" id="seed" class="form-control" 
+                                           placeholder="留空随机">
+                                    <small style="color: var(--text-muted);">相同种子可复现结果</small>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <button id="generate-btn" class="btn btn-primary" onclick="generateImage()" style="margin-top: 20px;">
+                        <span>🎨</span>
+                        <span>生成图片</span>
+                    </button>
+                </div>
+
+                <!-- 生成结果 -->
+                <div id="result-area" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">生成结果</h3>
+                        <span id="generation-info" style="color: var(--text-muted); font-size: 0.9rem;"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="generated-images" class="image-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.image-card {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+.image-card img {
+    width: 100%;
+    display: block;
+}
+
+.image-card-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.image-card:hover .image-card-actions {
+    opacity: 1;
+}
+
+.image-card-actions .btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+/* 参考图上传区域 */
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: var(--bg-secondary);
+}
+
+.upload-area.has-image {
+    border-style: solid;
+    cursor: default;
+}
+
+#reference-preview {
+    position: relative;
+    max-width: 300px;
+}
+
+#reference-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: var(--radius-md);
+}
+
+#reference-preview .remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 1;
+}
+
+#reference-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 加载动画 */
+.generating-placeholder {
+    aspect-ratio: 1;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.generating-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 滑块样式 */
+.form-range {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+}
+
+.form-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: none;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let availableModels = [];
+let currentModelConfig = null;
+let referenceImageBase64 = null;
+let useCustomModel = false;
+let currentApi = 'primary';  // 当前选择的API
+
+// 页面加载时获取模型列表和限制信息
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+    loadDailyLimit();
+});
+
+// API切换
+function onApiChange() {
+    currentApi = document.getElementById('api-select').value;
+    const apiInfo = document.getElementById('api-info');
+    
+    if (currentApi === 'fallback') {
+        apiInfo.textContent = '使用备用API (SiliconFlow Kolors)';
+        apiInfo.style.color = 'var(--warning-color)';
+    } else {
+        apiInfo.textContent = '';
+    }
+    
+    // 重新加载模型列表
+    loadModels();
+}
+
+// 切换自定义模型输入
+function toggleCustomModelInput() {
+    const customInput = document.getElementById('custom-model-input');
+    const modelSelect = document.getElementById('model');
+    useCustomModel = !useCustomModel;
+    
+    if (useCustomModel) {
+        customInput.style.display = 'block';
+        modelSelect.disabled = true;
+        customInput.focus();
+    } else {
+        customInput.style.display = 'none';
+        customInput.value = '';
+        modelSelect.disabled = false;
+        onModelChange();
+    }
+}
+
+// 自定义模型输入变更
+function onCustomModelChange() {
+    const customModel = document.getElementById('custom-model-input').value.trim();
+    if (customModel) {
+        updateModelInfo(customModel);
+    }
+}
+
+// 加载每日限制信息
+async function loadDailyLimit() {
+    try {
+        const response = await fetch('/ai/api/image/daily-limit');
+        const data = await response.json();
+        
+        if (data.success) {
+            const infoEl = document.getElementById('remaining-count');
+            if (data.is_admin) {
+                infoEl.innerHTML = '🎨 <span style="color: var(--success-color);">管理员无限制</span>';
+            } else if (data.remaining <= 0) {
+                if (data.has_fallback) {
+                    infoEl.innerHTML = `📊 主API次数已用完，将使用备用API（Kolors）生成`;
+                    document.getElementById('generate-btn').disabled = false;
+                } else {
+                    infoEl.innerHTML = `⚠️ <span style="color: var(--danger-color);">今日生成次数已用完（${data.daily_limit}/${data.daily_limit}）</span>`;
+                    document.getElementById('generate-btn').disabled = true;
+                }
+            } else {
+                infoEl.innerHTML = `📊 今日剩余: <span style="color: var(--primary-color); font-weight: bold;">${data.remaining}</span> / ${data.daily_limit} 张`;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load daily limit:', e);
+        document.getElementById('remaining-count').textContent = '无法获取限制信息';
+    }
+}
+
+// AI生成/优化提示词
+async function generatePromptWithAI() {
+    const userInput = document.getElementById('prompt').value.trim();
+    const style = document.getElementById('prompt-style').value;
+    
+    if (!userInput) {
+        Utils.showToast('请先输入简单的图片描述', 'warning');
+        return;
+    }
+    
+    const indicator = document.getElementById('prompt-generating');
+    indicator.style.display = 'inline';
+    
+    try {
+        const response = await fetch('/ai/api/image/generate-prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input: userInput, style })
+        });
+        
+        // 检查响应类型
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('服务器返回了非JSON响应');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('prompt').value = data.prompt;
+            Utils.showToast('提示词已优化', 'success');
+        } else {
+            Utils.showToast(data.message || '生成失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('生成失败: ' + e.message, 'danger');
+    } finally {
+        indicator.style.display = 'none';
+    }
+}
+
+// 加载可用模型
+async function loadModels() {
+    try {
+        const apiParam = currentApi === 'fallback' ? '?api=fallback' : '';
+        const response = await fetch('/ai/api/image/models' + apiParam);
+        const data = await response.json();
+        
+        if (data.success) {
+            availableModels = data.models;
+            const modelSelect = document.getElementById('model');
+            modelSelect.innerHTML = '';
+            
+            // 直接添加模型选项（不分组）
+            availableModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.is_custom ? model.id : `${model.name} (${model.provider})`;
+                if (model.id === data.default_model) {
+                    option.selected = true;
+                }
+                modelSelect.appendChild(option);
+            });
+            
+            // 设置默认值
+            document.getElementById('inference-steps').value = data.default_steps || 20;
+            document.getElementById('guidance-scale').value = data.default_guidance || 7.5;
+            
+            // 触发模型变更
+            onModelChange();
+        }
+    } catch (e) {
+        console.error('Failed to load models:', e);
+        Utils.showToast('加载模型列表失败', 'danger');
+    }
+}
+
+// 模型变更处理
+function onModelChange() {
+    const modelId = document.getElementById('model').value;
+    if (modelId) {
+        updateModelInfo(modelId);
+    }
+}
+
+// 更新模型信息
+async function updateModelInfo(modelId) {
+    if (!modelId) return;
+    
+    try {
+        const response = await fetch(`/ai/api/image/model-info/${encodeURIComponent(modelId)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentModelConfig = data.config;
+            const limits = data.limits;
+            
+            // 更新尺寸选项
+            const sizeSelect = document.getElementById('image-size');
+            sizeSelect.innerHTML = '';
+            (limits.image_sizes || ['1024x1024']).forEach(size => {
+                const option = document.createElement('option');
+                option.value = size;
+                const [w, h] = size.split('x');
+                let label = `${w}×${h}`;
+                if (w === h) label += ' (正方形)';
+                else if (parseInt(w) > parseInt(h)) label += ' (横向)';
+                else label += ' (纵向)';
+                option.textContent = label;
+                sizeSelect.appendChild(option);
+            });
+            
+            // 更新provider显示
+            document.getElementById('model-provider').textContent = 
+                currentModelConfig.provider ? `提供商: ${currentModelConfig.provider}` : '';
+            
+            // 更新负面提示词提示
+            const negativeHint = document.getElementById('negative-prompt-hint');
+            if (!limits.supports_negative_prompt) {
+                negativeHint.textContent = '⚠️ 当前模型不支持负面提示词';
+                negativeHint.style.color = 'var(--warning-color)';
+            } else {
+                negativeHint.textContent = '描述不想出现的元素';
+                negativeHint.style.color = 'var(--text-muted)';
+            }
+            
+            // 更新参考图提示
+            const refHint = document.getElementById('reference-hint');
+            if (!limits.supports_image2image) {
+                refHint.textContent = '⚠️ 当前模型不支持参考图功能';
+                refHint.style.color = 'var(--warning-color)';
+            } else {
+                refHint.textContent = '上传参考图后，AI将基于参考图生成相似风格的图片';
+                refHint.style.color = 'var(--text-muted)';
+            }
+            
+            // 更新参数限制
+            if (limits.num_inference_steps) {
+                const stepsInput = document.getElementById('inference-steps');
+                stepsInput.min = limits.num_inference_steps.min;
+                stepsInput.max = limits.num_inference_steps.max;
+            }
+            
+            if (limits.guidance_scale) {
+                const guidanceInput = document.getElementById('guidance-scale');
+                guidanceInput.min = limits.guidance_scale.min;
+                guidanceInput.max = limits.guidance_scale.max;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to get model info:', e);
+        // 对于自定义模型，使用默认配置
+        currentModelConfig = {
+            provider: 'Custom',
+            supports_image2image: true,
+            supports_negative_prompt: true
+        };
+        document.getElementById('model-provider').textContent = '自定义模型';
+    }
+}
+
+// 处理参考图上传
+function handleReferenceUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+        Utils.showToast('请上传图片文件', 'warning');
+        return;
+    }
+    
+    // 验证文件大小（最大10MB）
+    if (file.size > 10 * 1024 * 1024) {
+        Utils.showToast('图片大小不能超过10MB', 'warning');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        referenceImageBase64 = e.target.result;
+        
+        // 显示预览
+        document.getElementById('reference-image').src = referenceImageBase64;
+        document.getElementById('reference-preview').style.display = 'block';
+        document.getElementById('reference-placeholder').style.display = 'none';
+        document.getElementById('reference-upload-area').classList.add('has-image');
+        
+        // 显示强度控制
+        document.getElementById('strength-control').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+// 移除参考图
+function removeReferenceImage() {
+    referenceImageBase64 = null;
+    document.getElementById('reference-input').value = '';
+    document.getElementById('reference-preview').style.display = 'none';
+    document.getElementById('reference-placeholder').style.display = 'flex';
+    document.getElementById('reference-upload-area').classList.remove('has-image');
+    document.getElementById('strength-control').style.display = 'none';
+}
+
+// 获取当前选择的模型
+function getCurrentModel() {
+    if (useCustomModel) {
+        return document.getElementById('custom-model-input').value.trim();
+    }
+    return document.getElementById('model').value;
+}
+
+// 生成图片
+async function generateImage() {
+    const prompt = document.getElementById('prompt').value.trim();
+    const negativePrompt = document.getElementById('negative-prompt').value.trim();
+    const model = getCurrentModel();
+    const imageSize = document.getElementById('image-size').value;
+    const batchSize = parseInt(document.getElementById('batch-size').value);
+    const inferenceSteps = parseInt(document.getElementById('inference-steps').value);
+    const guidanceScale = parseFloat(document.getElementById('guidance-scale').value);
+    const seed = document.getElementById('seed').value ? parseInt(document.getElementById('seed').value) : null;
+    const imageStrength = parseFloat(document.getElementById('image-strength').value);
+
+    if (!prompt) {
+        Utils.showToast('请输入图片描述', 'warning');
+        return;
+    }
+    
+    if (!model) {
+        Utils.showToast('请选择或输入模型', 'warning');
+        return;
+    }
+
+    // 检查参考图支持
+    if (referenceImageBase64 && currentModelConfig && !currentModelConfig.supports_image2image) {
+        Utils.showToast('当前模型不支持参考图功能', 'warning');
+        return;
+    }
+
+    // 显示结果区域和加载占位符
+    const resultArea = document.getElementById('result-area');
+    const imagesContainer = document.getElementById('generated-images');
+    resultArea.style.display = 'block';
+    
+    // 创建加载占位符
+    imagesContainer.innerHTML = '';
+    for (let i = 0; i < batchSize; i++) {
+        imagesContainer.innerHTML += `
+            <div class="generating-placeholder">
+                <div class="generating-spinner"></div>
+                <span style="color: var(--text-muted);">生成中...</span>
+            </div>
+        `;
+    }
+
+    // 禁用生成按钮
+    const generateBtn = document.getElementById('generate-btn');
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="loading-spinner loading-spinner-sm"></span> 生成中...';
+
+    try {
+        const requestBody = {
+            prompt,
+            negative_prompt: negativePrompt,
+            model,
+            image_size: imageSize,
+            batch_size: batchSize,
+            num_inference_steps: inferenceSteps,
+            guidance_scale: guidanceScale,
+            seed,
+            use_fallback: currentApi === 'fallback'  // 传递API选择
+        };
+        
+        // 添加参考图
+        if (referenceImageBase64) {
+            requestBody.reference_image = referenceImageBase64;
+            requestBody.image_strength = imageStrength;
+        }
+
+        const response = await fetch('/ai/api/image/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        // 检查响应类型，避免解析HTML错误页面
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('服务器返回了非JSON响应，请检查API配置');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // 显示生成的图片
+            imagesContainer.innerHTML = '';
+            data.images.forEach((img, index) => {
+                imagesContainer.innerHTML += `
+                    <div class="image-card">
+                        <img src="${img.url}" alt="生成的图片 ${index + 1}" onclick="openImagePreview('${img.url}')">
+                        <div class="image-card-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="downloadImage('${img.url}', 'ai-image-${Date.now()}-${index}.png')">
+                                📥 下载
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="saveToGallery('${img.url}', '${prompt.replace(/'/g, "\\'")}')">
+                                💾 保存到图库
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="useAsReference('${img.url}')" title="用作参考图">
+                                🔄 参考
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 显示生成信息
+            document.getElementById('generation-info').textContent = 
+                `模型: ${model} | 种子: ${data.seed || '随机'} | 耗时: ${data.inference_time || '-'}ms`;
+
+            Utils.showToast('图片生成成功！', 'success');
+            
+            // 刷新剩余次数
+            loadDailyLimit();
+        } else {
+            imagesContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--danger-color);">
+                    <p>生成失败: ${data.message}</p>
+                </div>
+            `;
+            Utils.showToast(data.message || '生成失败', 'danger');
+        }
+    } catch (e) {
+        imagesContainer.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--danger-color);">
+                <p>生成失败: ${e.message}</p>
+            </div>
+        `;
+        Utils.showToast('生成失败: ' + e.message, 'danger');
+    } finally {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<span>🎨</span><span>生成图片</span>';
+    }
+}
+
+// 将生成的图片用作参考图
+async function useAsReference(imageUrl) {
+    try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            referenceImageBase64 = e.target.result;
+            document.getElementById('reference-image').src = referenceImageBase64;
+            document.getElementById('reference-preview').style.display = 'block';
+            document.getElementById('reference-placeholder').style.display = 'none';
+            document.getElementById('reference-upload-area').classList.add('has-image');
+            document.getElementById('strength-control').style.display = 'block';
+            Utils.showToast('已设为参考图', 'success');
+        };
+        reader.readAsDataURL(blob);
+    } catch (e) {
+        Utils.showToast('设置参考图失败', 'danger');
+    }
+}
+
+// 下载图片
+async function downloadImage(url, filename) {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        Utils.showToast('下载开始', 'success');
+    } catch (e) {
+        Utils.showToast('下载失败: ' + e.message, 'danger');
+    }
+}
+
+// 保存到图库
+async function saveToGallery(imageUrl, prompt) {
+    try {
+        const response = await fetch('/ai/api/image/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: imageUrl, prompt })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            Utils.showToast('已保存到图库', 'success');
+        } else {
+            Utils.showToast(data.message || '保存失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('保存失败: ' + e.message, 'danger');
+    }
+}
+
+// 图片预览
+function openImagePreview(url) {
+    window.open(url, '_blank');
+}
+</script>
+{% endblock %}

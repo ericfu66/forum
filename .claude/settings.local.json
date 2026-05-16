@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flask init-db:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Skill(frontend-design)",
+      "Bash(pip show *)",
+      "Bash(pip install *)",
+      "Bash(python run.py)",
+      "Bash(python -c \"from app import create_app; app = create_app\\(\\); print\\('App created successfully'\\)\")",
+      "Bash(python *)"
+    ]
+  }
+}

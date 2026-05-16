@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+
+{% block title %}我的图库 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+        <h1>🖼️ 我的图库</h1>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <a href="{{ url_for('ai.image_page') }}" class="btn btn-primary">
+                🎨 生成新图片
+            </a>
+        </div>
+    </div>
+
+    <!-- 过滤和排序 -->
+    <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
+        <select id="filter-type" class="form-control" style="width: auto;" onchange="filterGallery()">
+            <option value="all">全部类型</option>
+            <option value="generated">AI生成</option>
+            <option value="uploaded">手动上传</option>
+        </select>
+        <select id="sort-order" class="form-control" style="width: auto;" onchange="filterGallery()">
+            <option value="newest">最新优先</option>
+            <option value="oldest">最早优先</option>
+        </select>
+        <button id="batch-delete-btn" class="btn btn-danger" style="display: none;" onclick="batchDelete()">
+            🗑️ 删除选中 (<span id="selected-count">0</span>)
+        </button>
+        <span id="gallery-count" style="color: var(--text-muted); font-size: 14px; margin-left: auto;"></span>
+    </div>
+
+    <div id="gallery-container">
+        {% if images %}
+        <div class="gallery-grid" id="gallery-grid">
+            {% for image in images %}
+            <div class="gallery-item" data-id="{{ image.id }}" data-type="{{ image.image_type or 'generated' }}" data-time="{{ image.created_at }}">
+                <label class="gallery-select">
+                    <input type="checkbox" onchange="updateSelection()" data-id="{{ image.id }}">
+                </label>
+                <img src="{{ image.local_path or image.image_url }}" alt="{{ image.prompt[:50] }}"
+                     onclick="openImageModal({{ image.id }})">
+                <div class="gallery-item-overlay">
+                    <div class="gallery-item-prompt">{{ image.prompt[:100] }}{{ '...' if image.prompt|length > 100 else '' }}</div>
+                    <div class="gallery-item-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); downloadGalleryImage({{ image.id }})">
+                            📥
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteGalleryImage({{ image.id }})">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🖼️</div>
+            <h3>图库是空的</h3>
+            <p>去生成一些图片吧！</p>
+            <a href="{{ url_for('ai.image_page') }}" class="btn btn-primary">
+                🎨 开始创作
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 图片详情模态框 -->
+<div class="modal-overlay" id="image-modal" onclick="closeImageModal()">
+    <div class="modal-content image-modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeImageModal()">&times;</button>
+        <div class="image-modal-body">
+            <img id="modal-image" src="" alt="">
+            <div class="image-modal-info">
+                <h3>图片信息</h3>
+                <div class="info-item">
+                    <label>提示词</label>
+                    <p id="modal-prompt"></p>
+                </div>
+                <div class="info-item">
+                    <label>模型</label>
+                    <p id="modal-model"></p>
+                </div>
+                <div class="info-item">
+                    <label>类型</label>
+                    <p id="modal-type"></p>
+                </div>
+                <div class="info-item">
+                    <label>创建时间</label>
+                    <p id="modal-time"></p>
+                </div>
+                <div class="image-modal-actions">
+                    <button class="btn btn-secondary" onclick="downloadCurrentImage()">📥 下载</button>
+                    <button class="btn btn-danger" onclick="deleteCurrentImage()">🗑️ 删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.gallery-item {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    aspect-ratio: 1;
+    background: var(--bg-secondary);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.05);
+}
+
+.gallery-item-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.gallery-item:hover .gallery-item-overlay {
+    opacity: 1;
+}
+
+.gallery-item-prompt {
+    color: white;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.gallery-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.gallery-select {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+    cursor: pointer;
+    background: rgba(0,0,0,0.4);
+    border-radius: 4px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.gallery-item:hover .gallery-select {
+    opacity: 1;
+}
+
+.gallery-select input:checked ~ .gallery-item-overlay,
+.gallery-item.selected .gallery-select {
+    opacity: 1;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.image-modal-content {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.image-modal-body {
+    display: flex;
+    gap: 24px;
+}
+
+.image-modal-body img {
+    max-width: 60vw;
+    max-height: 80vh;
+    object-fit: contain;
+}
+
+.image-modal-info {
+    padding: 24px;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.image-modal-info h3 {
+    margin-bottom: 16px;
+}
+
+.info-item {
+    margin-bottom: 16px;
+}
+
+.info-item label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.info-item p {
+    margin: 0;
+    word-break: break-word;
+}
+
+.image-modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+@media (max-width: 768px) {
+    .image-modal-body {
+        flex-direction: column;
+    }
+
+    .image-modal-body img {
+        max-width: 100%;
+        max-height: 50vh;
+    }
+
+    .image-modal-info {
+        min-width: auto;
+        max-width: none;
+    }
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentImageId = null;
+let galleryImages = {{ images|tojson if images else '[]' }};
+
+// ==================== 过滤和排序 ====================
+
+function filterGallery() {
+    const typeFilter = document.getElementById('filter-type').value;
+    const sortOrder = document.getElementById('sort-order').value;
+    const grid = document.getElementById('gallery-grid');
+    if (!grid) return;
+
+    let items = Array.from(grid.children);
+
+    // 过滤
+    items.forEach(item => {
+        const type = item.dataset.type;
+        const show = typeFilter === 'all' || type === typeFilter;
+        item.style.display = show ? '' : 'none';
+    });
+
+    // 排序
+    const visibleItems = items.filter(item => item.style.display !== 'none');
+    visibleItems.sort((a, b) => {
+        const timeA = new Date(a.dataset.time);
+        const timeB = new Date(b.dataset.time);
+        return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+    visibleItems.forEach(item => grid.appendChild(item));
+
+    // 更新计数
+    document.getElementById('gallery-count').textContent = `${visibleItems.length} 张图片`;
+}
+
+// ==================== 批量选择 ====================
+
+function updateSelection() {
+    const checked = document.querySelectorAll('.gallery-select input:checked');
+    const count = checked.length;
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('batch-delete-btn').style.display = count > 0 ? '' : 'none';
+}
+
+async function batchDelete() {
+    const checked = document.querySelectorAll('.gallery-select input:checked');
+    const ids = Array.from(checked).map(cb => cb.dataset.id);
+
+    if (!confirm(`确定要删除选中的 ${ids.length} 张图片吗？`)) return;
+
+    let deleted = 0;
+    for (const id of ids) {
+        try {
+            const res = await fetch(`/ai/api/image/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                const item = document.querySelector(`.gallery-item[data-id="${id}"]`);
+                if (item) item.remove();
+                galleryImages = galleryImages.filter(img => img.id != id);
+                deleted++;
+            }
+        } catch (e) { /* skip */ }
+    }
+
+    Utils.showToast(`已删除 ${deleted} 张图片`, 'success');
+    updateSelection();
+    filterGallery();
+
+    if (galleryImages.length === 0) {
+        location.reload();
+    }
+}
+
+// ==================== 单张操作 ====================
+
+function openImageModal(id) {
+    const image = galleryImages.find(img => img.id === id);
+    if (!image) return;
+
+    currentImageId = id;
+    document.getElementById('modal-image').src = image.local_path || image.image_url;
+    document.getElementById('modal-prompt').textContent = image.prompt || '无';
+    document.getElementById('modal-model').textContent = image.model || '未知';
+    document.getElementById('modal-type').textContent = image.image_type === 'uploaded' ? '手动上传' : 'AI生成';
+    document.getElementById('modal-time').textContent = image.created_at || '未知';
+    document.getElementById('image-modal').classList.add('active');
+}
+
+function closeImageModal() {
+    document.getElementById('image-modal').classList.remove('active');
+    currentImageId = null;
+}
+
+async function downloadGalleryImage(id) {
+    const image = galleryImages.find(img => img.id === id);
+    if (!image) return;
+
+    try {
+        const url = image.local_path || image.image_url;
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `gallery-image-${id}.png`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        Utils.showToast('下载开始', 'success');
+    } catch (e) {
+        Utils.showToast('下载失败', 'danger');
+    }
+}
+
+function downloadCurrentImage() {
+    if (currentImageId) downloadGalleryImage(currentImageId);
+}
+
+async function deleteGalleryImage(id) {
+    if (!confirm('确定要删除这张图片吗？')) return;
+
+    try {
+        const response = await fetch(`/ai/api/image/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (data.success) {
+            const item = document.querySelector(`.gallery-item[data-id="${id}"]`);
+            if (item) item.remove();
+            galleryImages = galleryImages.filter(img => img.id !== id);
+            if (currentImageId === id) closeImageModal();
+            Utils.showToast('图片已删除', 'success');
+            filterGallery();
+
+            if (galleryImages.length === 0) {
+                document.getElementById('gallery-container').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🖼️</div>
+                        <h3>图库是空的</h3>
+                        <p>去生成一些图片吧！</p>
+                        <a href="/ai/image" class="btn btn-primary">🎨 开始创作</a>
+                    </div>
+                `;
+            }
+        } else {
+            Utils.showToast(data.message || '删除失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('删除失败: ' + e.message, 'danger');
+    }
+}
+
+function deleteCurrentImage() {
+    if (currentImageId) deleteGalleryImage(currentImageId);
+}
+
+// ESC键关闭模态框
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeImageModal();
+});
+
+// 初始化计数
+filterGallery();
+</script>
+{% endblock %}

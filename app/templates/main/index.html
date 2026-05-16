@@ -1,0 +1,1054 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-wrapper">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-inner">
+            <div class="hero-eyebrow">
+                <span class="hero-line"></span>
+                <span>智能创作社区</span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-line">用<span class="hero-accent">AI</span>点亮</span>
+                <span class="hero-title-line">每一个想法</span>
+            </h1>
+            <p class="hero-subtitle">
+                在这里，AI不仅是工具，更是你的创作伙伴。写文章、画图、对话、编程——无限可能，等你探索。
+            </p>
+            <div class="hero-actions">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('post.create') }}" class="hero-btn primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    开始创作
+                </a>
+                <a href="{{ url_for('ai.chat') }}" class="hero-btn secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    与AI对话
+                </a>
+                {% else %}
+                <a href="{{ url_for('auth.register') }}" class="hero-btn primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>
+                    加入社区
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="hero-btn secondary">登录</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-orb hero-orb-1"></div>
+            <div class="hero-orb hero-orb-2"></div>
+            <div class="hero-orb hero-orb-3"></div>
+            <div class="hero-grid"></div>
+        </div>
+    </section>
+
+    <!-- Stats Row -->
+    <section class="stats-row">
+        <div class="stat-item">
+            <span class="stat-num" data-count="{{ boards|length if boards else 0 }}">{{ boards|length if boards else 0 }}</span>
+            <span class="stat-label">版块</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="stat-num" data-count="{{ (pinned_posts|length + recent_posts|length) }}">{{ (pinned_posts|length + recent_posts|length) }}</span>
+            <span class="stat-label">文章</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="stat-num" style="font-size: 20px;">AI</span>
+            <span class="stat-label">驱动</span>
+        </div>
+    </section>
+
+    <!-- Daily AI Section -->
+    <section class="daily-section">
+        <div class="daily-card daily-quote-card">
+            <div class="daily-card-accent"></div>
+            <div class="daily-card-inner">
+                <div class="daily-card-header">
+                    <span class="daily-card-label">每日一言</span>
+                    <button class="daily-refresh-btn" onclick="loadDailyQuote(true)" title="换一条">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="daily-quote-text" id="daily-quote">加载中...</p>
+            </div>
+        </div>
+
+        {% if current_user.is_authenticated %}
+        <div class="daily-card daily-fortune-card">
+            <div class="daily-card-accent"></div>
+            <div class="daily-card-inner">
+                <div class="daily-card-header">
+                    <span class="daily-card-label">今日运势</span>
+                    <button class="daily-refresh-btn" onclick="loadDailyFortune(true)" title="刷新运势">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="fortune-content" id="fortune-content">
+                    <span class="fortune-loading">加载中...</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="daily-card daily-prompt-card">
+            <div class="daily-card-accent"></div>
+            <div class="daily-card-inner">
+                <div class="daily-card-header">
+                    <span class="daily-card-label">写作灵感</span>
+                    <button class="daily-refresh-btn" onclick="loadDailyPrompt(true)" title="换一批">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="prompt-topics" id="prompt-topics">
+                    <span class="fortune-loading">加载中...</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Articles Section -->
+    <section class="articles-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="section-title-num">01</span>
+                <span>最新文章</span>
+            </h2>
+            <a href="{{ url_for('post.post_list') }}" class="section-link">
+                查看全部
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
+            </a>
+        </div>
+
+        <div class="articles-grid">
+            {% for post in pinned_posts + recent_posts %}
+            <article class="article-card" style="--delay: {{ loop.index0 }}">
+                {% if post.images and post.images|length > 0 %}
+                <a href="{{ url_for('post.detail', post_id=post.id) }}" class="article-thumb">
+                    <img src="{{ post.images[0] }}" alt="{{ post.title }}" loading="lazy">
+                    <div class="thumb-frame"></div>
+                </a>
+                {% endif %}
+
+                <div class="article-body">
+                    <div class="article-badges">
+                        {% if post.is_pinned %}
+                        <span class="badge-pin">置顶</span>
+                        {% endif %}
+                        {% if post.is_ai_generated %}
+                        <span class="badge-ai">AI 生成</span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="article-title">
+                        <a href="{{ url_for('post.detail', post_id=post.id) }}">{{ post.title }}</a>
+                    </h3>
+
+                    <p class="article-excerpt">{{ post.content|striptags|truncate(120) }}</p>
+
+                    <div class="article-footer">
+                        <div class="article-author">
+                            <img src="{{ post.author.avatar }}" alt="" class="author-avatar">
+                            <span class="author-name">{{ post.author.username }}</span>
+                        </div>
+                        <div class="article-meta">
+                            {% if post.board %}
+                            <span class="meta-board">{{ post.board.icon|default('◆') }} {{ post.board.name }}</span>
+                            {% endif %}
+                            <span class="meta-date">{{ post.created_at[5:10] if post.created_at else '' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                    </svg>
+                </div>
+                <h3>还没有文章</h3>
+                <p>成为第一个分享想法的人</p>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('post.create') }}" class="empty-link">写第一篇文章 →</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="page-footer">
+        <div class="footer-line"></div>
+        <p>© {{ now.year if now else '2026' }} {{ site_name }}</p>
+    </footer>
+</div>
+
+<style>
+/* ==================================================
+   Home Page — Editorial Warmth Edition
+   ================================================== */
+
+.home-wrapper {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 64px 32px 80px;
+}
+
+/* ========== Hero ========== */
+.hero-section {
+    position: relative;
+    padding: 48px 0 56px;
+    margin-bottom: 48px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+}
+
+.hero-inner {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-terracotta);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+}
+
+.hero-line {
+    width: 32px;
+    height: 1px;
+    background: var(--accent-terracotta);
+}
+
+.hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 52px);
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--text-strong);
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+}
+
+.hero-title-line {
+    display: block;
+}
+
+.hero-accent {
+    color: var(--accent-terracotta);
+    font-style: italic;
+    position: relative;
+}
+
+.hero-accent::after {
+    content: '';
+    position: absolute;
+    left: -4px; right: -4px; bottom: 4px;
+    height: 8px;
+    background: linear-gradient(120deg, var(--accent-gold), transparent);
+    opacity: 0.35;
+    z-index: -1;
+    border-radius: 2px;
+}
+
+.hero-subtitle {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-muted);
+    max-width: 440px;
+    margin-bottom: 36px;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border-radius: 100px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    border: none;
+}
+
+.hero-btn.primary {
+    background: var(--accent-terracotta);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(199, 91, 57, 0.25);
+}
+
+.hero-btn.primary:hover {
+    background: #b54d2e;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(199, 91, 57, 0.35);
+}
+
+.hero-btn.secondary {
+    background: transparent;
+    color: var(--text-strong);
+    border: 1.5px solid var(--border-strong);
+}
+
+.hero-btn.secondary:hover {
+    border-color: var(--accent-terracotta);
+    color: var(--accent-terracotta);
+    transform: translateY(-2px);
+}
+
+/* Hero Visual */
+.hero-visual {
+    position: absolute;
+    top: -20px;
+    right: -60px;
+    width: 340px;
+    height: 340px;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.55;
+}
+
+.hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+}
+
+.hero-orb-1 {
+    width: 200px; height: 200px;
+    top: 20px; right: 40px;
+    background: var(--accent-terracotta);
+    opacity: 0.12;
+    animation: orbFloat 8s ease-in-out infinite;
+}
+
+.hero-orb-2 {
+    width: 140px; height: 140px;
+    top: 100px; right: 120px;
+    background: var(--accent-gold);
+    opacity: 0.18;
+    animation: orbFloat 10s ease-in-out infinite 1s;
+}
+
+.hero-orb-3 {
+    width: 80px; height: 80px;
+    top: 60px; right: 180px;
+    background: var(--accent-green);
+    opacity: 0.1;
+    animation: orbFloat 7s ease-in-out infinite 2s;
+}
+
+@keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-10px, 15px) scale(1.05); }
+    66% { transform: translate(10px, -10px) scale(0.95); }
+}
+
+.hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--text-strong) 1px, transparent 1px),
+        linear-gradient(90deg, var(--text-strong) 1px, transparent 1px);
+    background-size: 32px 32px;
+    opacity: 0.025;
+    mask-image: radial-gradient(circle at 70% 40%, black 0%, transparent 70%);
+    -webkit-mask-image: radial-gradient(circle at 70% 40%, black 0%, transparent 70%);
+}
+
+[data-theme="dark"] .hero-grid { opacity: 0.04; }
+
+/* ========== Stats ========== */
+.stats-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 56px;
+    padding: 20px 28px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: fit-content;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 24px;
+    min-width: 80px;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 32px;
+    background: var(--border);
+}
+
+.stat-num {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-strong);
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.stat-label {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+/* ========== Daily Section ========== */
+.daily-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 56px;
+}
+
+.daily-card {
+    position: relative;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: revealUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 0.1s + 0.2s);
+}
+
+.daily-card:nth-child(1) { --i: 0; }
+.daily-card:nth-child(2) { --i: 1; }
+.daily-card:nth-child(3) { --i: 2; }
+
+.daily-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.daily-card-accent {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+
+.daily-quote-card .daily-card-accent {
+    background: linear-gradient(90deg, var(--accent-terracotta), var(--accent-gold));
+}
+
+.daily-fortune-card .daily-card-accent {
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-green));
+}
+
+.daily-prompt-card .daily-card-accent {
+    background: linear-gradient(90deg, var(--accent-green), var(--primary));
+}
+
+.daily-card-inner {
+    padding: 20px;
+}
+
+.daily-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.daily-card-label {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.daily-refresh-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-muted);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.daily-refresh-btn:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+    transform: rotate(180deg);
+}
+
+.daily-quote-text {
+    font-family: var(--font-display);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-strong);
+    font-weight: 500;
+    margin: 0;
+    font-style: italic;
+}
+
+.fortune-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.fortune-level {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.fortune-score {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-muted);
+    padding: 2px 8px;
+    border-radius: 100px;
+}
+
+.fortune-message {
+    font-size: 13px;
+    color: var(--text-body);
+    width: 100%;
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+.fortune-action {
+    font-size: 12px;
+    color: var(--primary);
+    margin-top: 2px;
+}
+
+.fortune-loading {
+    font-size: 13px;
+    color: var(--text-faint);
+}
+
+.prompt-topics {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.prompt-topic {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-body);
+    line-height: 1.5;
+    font-family: var(--font-body);
+}
+
+.prompt-topic::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+
+/* ========== Articles ========== */
+.articles-section { margin-bottom: 72px; }
+
+.section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 36px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.section-title-num {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent-terracotta);
+    letter-spacing: 0;
+}
+
+.section-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    letter-spacing: 0.3px;
+}
+
+.section-link:hover {
+    color: var(--accent-terracotta);
+    gap: 8px;
+}
+
+/* Article Grid */
+.articles-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.article-card {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 28px;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--border);
+    animation: revealUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--delay, 0) * 0.08s);
+    transition: all 0.35s ease;
+}
+
+.article-card:last-child { border-bottom: none; }
+
+.article-card:hover {
+    padding-left: 8px;
+    padding-right: 8px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-md);
+    margin: 0 -8px;
+}
+
+.article-card:hover + .article-card {
+    border-top: 1px solid transparent;
+}
+
+@keyframes revealUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.article-thumb {
+    flex-shrink: 0;
+    width: 220px; height: 150px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+    display: block;
+}
+
+.article-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.article-card:hover .article-thumb img {
+    transform: scale(1.08);
+}
+
+.thumb-frame {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: inherit;
+    pointer-events: none;
+    transition: border-color 0.3s ease;
+}
+
+.article-card:hover .thumb-frame {
+    border-color: rgba(199, 91, 57, 0.2);
+}
+
+.article-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.article-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.badge-pin {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    background: rgba(212, 163, 115, 0.1);
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.badge-ai {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.article-title {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+}
+
+.article-title a {
+    color: var(--text-strong);
+    text-decoration: none;
+    transition: color 0.3s ease;
+    background-image: linear-gradient(var(--accent-terracotta), var(--accent-terracotta));
+    background-size: 0% 1.5px;
+    background-position: left bottom;
+    background-repeat: no-repeat;
+    transition: background-size 0.4s ease, color 0.3s ease;
+    padding-bottom: 2px;
+}
+
+.article-title a:hover {
+    color: var(--accent-terracotta);
+    background-size: 100% 1.5px;
+}
+
+.article-excerpt {
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.article-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 14px;
+}
+
+.article-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.author-avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    padding: 1px;
+    background: var(--bg-surface);
+}
+
+.author-name {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-body);
+}
+
+.article-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.meta-board {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary);
+    font-family: var(--font-body);
+}
+
+.meta-date {
+    font-size: 12px;
+    color: var(--text-faint);
+    font-family: var(--font-body);
+}
+
+/* ========== Empty State ========== */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    margin: 16px 0;
+}
+
+.empty-icon {
+    margin-bottom: 20px;
+    color: var(--text-faint);
+}
+
+.empty-state h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    color: var(--text-strong);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+.empty-link {
+    font-family: var(--font-body);
+    color: var(--accent-terracotta);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background-image: linear-gradient(var(--accent-terracotta), var(--accent-terracotta));
+    background-size: 100% 1px;
+    background-position: left bottom;
+    background-repeat: no-repeat;
+}
+
+.empty-link:hover {
+    background-size: 0% 1px;
+    color: var(--text-strong);
+}
+
+/* ========== Footer ========== */
+.page-footer {
+    padding-top: 32px;
+}
+
+.footer-line {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 24px;
+}
+
+.page-footer p {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-faint);
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+    .home-wrapper { padding: 32px 20px 48px; }
+
+    .hero-section { padding: 32px 0; }
+    .hero-title { font-size: 32px; }
+    .hero-subtitle { font-size: 14px; }
+    .hero-visual { display: none; }
+
+    .stats-row {
+        width: 100%;
+        justify-content: space-around;
+    }
+    .stat-item { padding: 0 12px; min-width: auto; }
+    .stat-num { font-size: 22px; }
+
+    .daily-section { grid-template-columns: 1fr; }
+
+    .article-card {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .article-thumb {
+        width: 100%;
+        height: 180px;
+    }
+    .article-title { font-size: 17px; }
+    .article-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title { font-size: 28px; }
+    .hero-actions { flex-direction: column; }
+    .hero-btn { justify-content: center; }
+    .section-title { font-size: 18px; }
+}
+</style>
+
+<script>
+// Daily AI Features
+function loadDailyQuote(forceRefresh) {
+    const el = document.getElementById('daily-quote');
+    if (!el) return;
+    const url = '/ai/api/daily/quote' + (forceRefresh ? '?refresh=true' : '');
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.quote) {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(4px)';
+                setTimeout(() => {
+                    el.textContent = data.quote;
+                    el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, 150);
+            } else {
+                el.textContent = '学而不思则罔，思而不学则殆';
+            }
+        })
+        .catch(() => { el.textContent = '学而不思则罔，思而不学则殆'; });
+}
+
+function loadDailyFortune(forceRefresh) {
+    const contentEl = document.getElementById('fortune-content');
+    if (!contentEl) return;
+    const url = '/ai/api/daily/fortune' + (forceRefresh ? '?refresh=true' : '');
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                contentEl.style.opacity = '0';
+                setTimeout(() => {
+                    contentEl.innerHTML =
+                        '<span class="fortune-level">' + (data.luck_level || '') + '</span>' +
+                        '<span class="fortune-score">' + (data.luck_score || '') + '分</span>' +
+                        '<span class="fortune-message">' + (data.message || '') + '</span>' +
+                        (data.lucky_action ? '<span class="fortune-action">今日宜：' + data.lucky_action + '</span>' : '');
+                    contentEl.style.transition = 'opacity 0.4s ease';
+                    contentEl.style.opacity = '1';
+                }, 150);
+            } else {
+                contentEl.innerHTML = '<span class="fortune-loading">登录后查看今日运势</span>';
+            }
+        })
+        .catch(() => { contentEl.innerHTML = '<span class="fortune-loading">运势加载失败</span>'; });
+}
+
+function loadDailyPrompt(forceRefresh) {
+    const el = document.getElementById('prompt-topics');
+    if (!el) return;
+    const url = '/ai/api/daily/prompt' + (forceRefresh ? '?refresh=true' : '');
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.topics && data.topics.length > 0) {
+                el.innerHTML = data.topics.map(function(t) {
+                    return '<span class="prompt-topic">' + t + '</span>';
+                }).join('');
+            } else {
+                el.innerHTML = '<span class="prompt-topic">分享一个你最近学到的新知识</span>' +
+                    '<span class="prompt-topic">描述一个改变你想法的瞬间</span>' +
+                    '<span class="prompt-topic">推荐一本对你影响深远的书</span>';
+            }
+        })
+        .catch(() => {
+            el.innerHTML = '<span class="prompt-topic">分享一个你最近学到的新知识</span>' +
+                '<span class="prompt-topic">描述一个改变你想法的瞬间</span>';
+        });
+}
+
+// Animate stat numbers on scroll
+document.addEventListener('DOMContentLoaded', function() {
+    loadDailyQuote(false);
+    loadDailyFortune(false);
+    loadDailyPrompt(false);
+
+    const statNums = document.querySelectorAll('.stat-num[data-count]');
+    if (!statNums.length) return;
+
+    const animateCount = (el) => {
+        const target = parseInt(el.dataset.count, 10);
+        if (isNaN(target)) return;
+        const duration = 1200;
+        const start = performance.now();
+        const step = (now) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.floor(ease * target);
+            if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCount(entry.target);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+
+    statNums.forEach(el => observer.observe(el));
+});
+</script>
+{% endblock %}

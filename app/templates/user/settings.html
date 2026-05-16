@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-section {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.avatar-preview {
+    position: relative;
+}
+
+.avatar-preview img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.avatar-upload-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid var(--bg-secondary);
+    font-size: 14px;
+    transition: transform 0.2s;
+}
+
+.avatar-upload-btn:hover {
+    transform: scale(1.1);
+}
+
+.avatar-info {
+    flex: 1;
+}
+
+.avatar-info h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+}
+
+.avatar-info p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.avatar-presets {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.avatar-preset {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+}
+
+.avatar-preset:hover {
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.avatar-preset.active {
+    border-color: var(--primary-color);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="row">
+        <div class="col" style="max-width: 600px;">
+            <!-- 头像设置 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🖼️ 头像设置</h2>
+                </div>
+
+                <div class="avatar-section">
+                    <div class="avatar-preview">
+                        <img id="avatar-img" src="{{ user.avatar }}" alt="头像">
+                        <label for="avatar-file" class="avatar-upload-btn">📷</label>
+                        <input type="file" id="avatar-file" accept="image/*" style="display: none;">
+                    </div>
+                    <div class="avatar-info">
+                        <h3>{{ user.username }}</h3>
+                        <p>点击📷按钮上传自定义头像</p>
+                        <p>支持 JPG、PNG 格式，最大 2MB</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label class="form-label">或选择默认头像</label>
+                    <div class="avatar-presets">
+                        <div class="avatar-preset" data-avatar="😀" onclick="setPresetAvatar(this)">😀</div>
+                        <div class="avatar-preset" data-avatar="😎" onclick="setPresetAvatar(this)">😎</div>
+                        <div class="avatar-preset" data-avatar="🤖" onclick="setPresetAvatar(this)">🤖</div>
+                        <div class="avatar-preset" data-avatar="🐱" onclick="setPresetAvatar(this)">🐱</div>
+                        <div class="avatar-preset" data-avatar="🦊" onclick="setPresetAvatar(this)">🦊</div>
+                        <div class="avatar-preset" data-avatar="🐼" onclick="setPresetAvatar(this)">🐼</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基本设置 -->
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <h2 class="card-title">⚙️ 基本设置</h2>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.settings') }}">
+                    <div class="form-group">
+                        <label class="form-label">个人简介</label>
+                        <textarea name="bio" class="form-control" rows="3">{{ user.bio }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">主题</label>
+                        <select id="theme-select" name="theme" class="form-control">
+                            <option value="light">浅色模式</option>
+                            <option value="dark">深色模式</option>
+                            <option value="paper">纸质主题</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="petals-toggle" style="width: 16px; height: 16px;">
+                            <span>启用落英动效</span>
+                            <span class="text-muted" style="font-size: 12px;">（飘落的花瓣装饰）</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                </form>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <h3 class="card-title">修改密码</h3>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.change_password') }}">
+                    <div class="form-group">
+                        <label class="form-label">当前密码</label>
+                        <input type="password" name="old_password" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">新密码</label>
+                        <input type="password" name="new_password" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">确认新密码</label>
+                        <input type="password" name="confirm_password" class="form-control" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-secondary">修改密码</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 头像上传
+document.getElementById('avatar-file').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 验证文件
+    if (!file.type.startsWith('image/')) {
+        Utils.showToast('请选择图片文件', 'warning');
+        return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+        Utils.showToast('图片大小不能超过2MB', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+        const response = await fetch('/auth/avatar', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('avatar-img').src = data.avatar + '?t=' + Date.now();
+            Utils.showToast('头像上传成功', 'success');
+        } else {
+            Utils.showToast(data.message || '上传失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('上传失败', 'danger');
+    }
+});
+
+// 预设头像
+async function setPresetAvatar(el) {
+    const avatar = el.dataset.avatar;
+
+    document.querySelectorAll('.avatar-preset').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+
+    try {
+        const response = await fetch('/auth/avatar/preset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatar: avatar })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('avatar-img').src = data.avatar;
+            Utils.showToast('头像已更换', 'success');
+        }
+    } catch (e) {
+        Utils.showToast('更换失败', 'danger');
+    }
+}
+
+// 初始化设置
+document.addEventListener('DOMContentLoaded', function() {
+    // 主题选择器
+    const themeSelect = document.getElementById('theme-select');
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    themeSelect.value = currentTheme;
+
+    themeSelect.addEventListener('change', function() {
+        localStorage.setItem('theme', this.value);
+        document.documentElement.setAttribute('data-theme', this.value);
+        if (window.Utils && Utils.showToast) {
+            Utils.showToast('主题已切换', 'success');
+        }
+    });
+
+    // 落英动效开关
+    const petalsToggle = document.getElementById('petals-toggle');
+    const petalsEnabled = localStorage.getItem('petals-enabled') !== 'false';
+    petalsToggle.checked = petalsEnabled;
+
+    petalsToggle.addEventListener('change', function() {
+        if (window.petalsEffect) {
+            if (this.checked) {
+                petalsEffect.enable();
+            } else {
+                petalsEffect.disable();
+            }
+        }
+        localStorage.setItem('petals-enabled', this.checked);
+        if (window.Utils && Utils.showToast) {
+            Utils.showToast(this.checked ? '落英动效已开启' : '落英动效已关闭', 'success');
+        }
+    });
+});
+</script>
+{% endblock %}

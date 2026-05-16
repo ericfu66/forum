@@ -1,0 +1,216 @@
+/**
+ * 代码运行器样式
+ */
+
+.code-runner-wrapper {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    overflow: hidden;
+    background: var(--bg-secondary);
+    margin: 16px 0;
+}
+
+.code-runner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.code-runner-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.runner-tab {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.runner-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.runner-tab.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.code-runner-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.code-runner-editor {
+    padding: 0;
+}
+
+.code-runner-editor .code-input {
+    width: 100%;
+    min-height: 200px;
+    padding: 16px;
+    border: none;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+}
+
+.code-runner-editor .code-input::placeholder {
+    color: var(--text-muted);
+}
+
+.code-runner-output {
+    border-top: 1px solid var(--border-color);
+}
+
+.code-runner-output .output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.code-runner-output .output-content {
+    padding: 16px;
+    min-height: 100px;
+    max-height: 400px;
+    overflow: auto;
+    background: var(--bg-primary);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* 安装对话框 */
+.install-dialog {
+    padding: 0;
+}
+
+.install-dialog-content {
+    padding: 16px;
+}
+
+.install-dialog-content h4 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.allowed-packages {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    color: var(--text-muted);
+}
+
+/* 代码块内的运行按钮 */
+.code-run-btn {
+    transition: all 0.2s;
+}
+
+.code-run-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(233, 30, 99, 0.3);
+}
+
+.code-run-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 代码输出区域 */
+.code-output-area {
+    animation: fadeIn 0.3s ease;
+}
+
+.code-output-area pre {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 输出图片 */
+.output-images img {
+    transition: transform 0.2s;
+}
+
+.output-images img:hover {
+    transform: scale(1.02);
+}
+
+/* 帖子内代码运行器 */
+.post-code-runner {
+    margin: 20px 0;
+    border: 2px solid var(--primary-light);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.post-code-runner .code-runner-header {
+    background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(118, 75, 162, 0.1));
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .code-runner-header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    .code-runner-tabs {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .code-runner-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .code-runner-editor .code-input {
+        min-height: 150px;
+        font-size: 14px;
+    }
+    
+    .code-runner-output .output-content {
+        max-height: 300px;
+        font-size: 13px;
+    }
+}
+
+/* 暗色主题适配 */
+[data-theme="dark"] .code-runner-wrapper {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .code-runner-editor .code-input {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .code-runner-output .output-content {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .allowed-packages {
+    background: rgba(0, 0, 0, 0.2);
+}

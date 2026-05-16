@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}后台管理 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="admin-panel">
+        <div class="card-header">
+            <h1 class="card-title">🛡️ 后台管理</h1>
+        </div>
+
+        <!-- 统计数据 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+            <div class="stat-card">
+                <div class="stat-value" data-stat="total-users">{{ stats.users }}</div>
+                <div class="stat-label">总用户数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" data-stat="total-posts">{{ stats.posts }}</div>
+                <div class="stat-label">总帖子数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" data-stat="total-comments">{{ stats.comments }}</div>
+                <div class="stat-label">总评论数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" data-stat="ai-calls">{{ stats.api_calls }}</div>
+                <div class="stat-label">24小时AI调用</div>
+            </div>
+        </div>
+
+        <!-- 快速导航 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 32px;">
+            <a href="{{ url_for('admin.users') }}" class="card" style="text-align: center; text-decoration: none;">
+                <div style="font-size: 2rem;">👥</div>
+                <div>用户管理</div>
+            </a>
+            <a href="{{ url_for('admin.posts') }}" class="card" style="text-align: center; text-decoration: none;">
+                <div style="font-size: 2rem;">📝</div>
+                <div>内容管理</div>
+            </a>
+            <a href="{{ url_for('admin.moderation') }}" class="card" style="text-align: center; text-decoration: none; position: relative;">
+                <div style="font-size: 2rem;">🛡️</div>
+                <div>内容审核</div>
+                {% if pending_moderation_count and pending_moderation_count > 0 %}
+                <span style="position: absolute; top: 8px; right: 8px; background: var(--danger-color); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center;">
+                    {{ pending_moderation_count if pending_moderation_count < 100 else '99+' }}
+                </span>
+                {% endif %}
+            </a>
+            <a href="{{ url_for('admin.boards') }}" class="card" style="text-align: center; text-decoration: none;">
+                <div style="font-size: 2rem;">📁</div>
+                <div>版块管理</div>
+            </a>
+            <a href="{{ url_for('admin.config') }}" class="card" style="text-align: center; text-decoration: none;">
+                <div style="font-size: 2rem;">⚙️</div>
+                <div>配置管理</div>
+            </a>
+            <a href="{{ url_for('admin.knowledge') }}" class="card" style="text-align: center; text-decoration: none;">
+                <div style="font-size: 2rem;">🧠</div>
+                <div>知识库管理</div>
+            </a>
+            <a href="{{ url_for('admin.sensitive_words') }}" class="card" style="text-align: center; text-decoration: none;">
+                <div style="font-size: 2rem;">🔤</div>
+                <div>敏感词管理</div>
+            </a>
+        </div>
+
+        <!-- 最近用户 -->
+        <div class="card">
+            <h3 class="card-title">最近注册用户</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="padding: 12px; text-align: left;">用户名</th>
+                        <th style="padding: 12px; text-align: left;">邮箱</th>
+                        <th style="padding: 12px; text-align: left;">角色</th>
+                        <th style="padding: 12px; text-align: left;">注册时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in recent_users %}
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px;">{{ user.username }}</td>
+                        <td style="padding: 12px;">{{ user.email }}</td>
+                        <td style="padding: 12px;">
+                            <span class="badge {% if user.role == 'admin' %}badge-secondary{% else %}badge-primary{% endif %}">
+                                {{ user.role }}
+                            </span>
+                        </td>
+                        <td style="padding: 12px;" data-time="{{ user.created_at }}">{{ user.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

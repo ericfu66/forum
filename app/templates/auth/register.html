@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .register-page {
+        min-height: calc(100vh - 60px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Warm atmospheric gradient — emerald/teal accent to contrast login's indigo */
+    .register-page::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+            radial-gradient(ellipse 70% 55% at 75% 15%, rgba(16, 185, 129, 0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 55% 45% at 20% 85%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse 45% 40% at 50% 50%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    [data-theme="dark"] .register-page::before {
+        background:
+            radial-gradient(ellipse 70% 55% at 75% 15%, rgba(52, 211, 153, 0.08) 0%, transparent 60%),
+            radial-gradient(ellipse 55% 45% at 20% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
+            radial-gradient(ellipse 45% 40% at 50% 50%, rgba(251, 191, 36, 0.03) 0%, transparent 50%);
+    }
+
+    .register-card {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 440px;
+        background: var(--bg-surface);
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        animation: regCardIn 0.6s var(--ease-out) both;
+    }
+
+    @keyframes regCardIn {
+        from {
+            opacity: 0;
+            transform: translateY(24px) scale(0.97);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Emerald accent bar — distinct from login's indigo-pink-cyan */
+    .register-accent-bar {
+        height: 4px;
+        background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #f59e0b 100%);
+    }
+
+    .register-card-header {
+        text-align: center;
+        padding: 36px 36px 0;
+    }
+
+    .register-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-lg);
+        background: rgba(16, 185, 129, 0.1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        color: var(--accent-green);
+    }
+
+    [data-theme="dark"] .register-icon {
+        background: rgba(52, 211, 153, 0.12);
+        color: #34d399;
+    }
+
+    .register-title {
+        font-family: var(--font-display);
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-strong);
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+    }
+
+    .register-subtitle {
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+
+    .register-form {
+        padding: 28px 36px 32px;
+    }
+
+    .register-form .form-group {
+        margin-bottom: 18px;
+    }
+
+    .register-form .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-body);
+        margin-bottom: 8px;
+        letter-spacing: 0.2px;
+    }
+
+    .register-form .form-control {
+        width: 100%;
+        padding: 12px 14px;
+        background: var(--bg-muted);
+        border: 1.5px solid transparent;
+        border-radius: var(--radius-md);
+        font-size: 14.5px;
+        font-family: var(--font-body);
+        color: var(--text-strong);
+        transition: all var(--duration-fast) var(--ease-out);
+        outline: none;
+    }
+
+    .register-form .form-control:focus {
+        background: var(--bg-surface);
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .register-form .form-control::placeholder {
+        color: var(--text-faint);
+    }
+
+    /* Captcha row */
+    .captcha-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .captcha-row .form-control {
+        flex: 1;
+    }
+
+    .captcha-img {
+        height: 44px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--border-strong);
+        transition: border-color var(--duration-fast);
+    }
+
+    .captcha-img:hover {
+        border-color: #10b981;
+    }
+
+    /* Submit button — emerald gradient */
+    .register-btn {
+        width: 100%;
+        padding: 13px 24px;
+        background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 15px;
+        font-weight: 600;
+        font-family: var(--font-display);
+        cursor: pointer;
+        transition: all var(--duration-normal) var(--ease-out);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        margin-top: 6px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .register-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+        transform: translateX(-100%);
+        transition: transform 0.5s ease;
+    }
+
+    .register-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 24px rgba(16, 185, 129, 0.4);
+    }
+
+    .register-btn:hover::before {
+        transform: translateX(100%);
+    }
+
+    .register-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Footer */
+    .register-footer {
+        text-align: center;
+        padding: 0 36px 32px;
+    }
+
+    .register-footer p {
+        font-size: 13.5px;
+        color: var(--text-muted);
+    }
+
+    .register-footer a {
+        color: #10b981;
+        font-weight: 600;
+        text-decoration: none;
+        transition: color var(--duration-fast);
+    }
+
+    .register-footer a:hover {
+        color: #059669;
+        text-decoration: underline;
+    }
+
+    /* Stagger animation */
+    .register-form .form-group:nth-child(1) { animation: regFieldIn 0.4s var(--ease-out) 0.1s both; }
+    .register-form .form-group:nth-child(2) { animation: regFieldIn 0.4s var(--ease-out) 0.18s both; }
+    .register-form .form-group:nth-child(3) { animation: regFieldIn 0.4s var(--ease-out) 0.26s both; }
+    .register-form .form-group:nth-child(4) { animation: regFieldIn 0.4s var(--ease-out) 0.34s both; }
+    .register-form .form-group:nth-child(5) { animation: regFieldIn 0.4s var(--ease-out) 0.42s both; }
+    .register-btn { animation: regFieldIn 0.4s var(--ease-out) 0.5s both; }
+
+    @keyframes regFieldIn {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Dark theme button */
+    [data-theme="dark"] .register-btn {
+        background: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+        box-shadow: 0 4px 16px rgba(52, 211, 153, 0.2);
+    }
+
+    [data-theme="dark"] .register-btn:hover {
+        box-shadow: 0 6px 24px rgba(52, 211, 153, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        .register-card-header,
+        .register-form,
+        .register-footer {
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .register-card-header {
+            padding-top: 28px;
+        }
+
+        .register-title {
+            font-size: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="register-page">
+    <div class="register-card">
+        <div class="register-accent-bar"></div>
+        <div class="register-card-header">
+            <div class="register-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+            </div>
+            <h2 class="register-title">创建账号</h2>
+            <p class="register-subtitle">加入 {{ site_name }}，开始探索</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}" class="register-form">
+            <div class="form-group">
+                <label class="form-label">用户名</label>
+                <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">邮箱</label>
+                <input type="email" name="email" class="form-control" placeholder="请输入邮箱" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">密码</label>
+                <input type="password" name="password" class="form-control" placeholder="请输入密码（至少6位）" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">确认密码</label>
+                <input type="password" name="confirm_password" class="form-control" placeholder="请再次输入密码" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">验证码</label>
+                <div class="captcha-row">
+                    <input type="text" name="captcha" class="form-control" placeholder="请输入验证码" required maxlength="4">
+                    <img id="captcha-image" src="" alt="验证码" class="captcha-img"
+                        onclick="refreshCaptcha()" title="点击刷新验证码">
+                </div>
+            </div>
+
+            <button type="submit" class="register-btn">注册</button>
+        </form>
+
+        <div class="register-footer">
+            <p>已有账号？ <a href="{{ url_for('auth.login') }}">立即登录</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadCaptcha() {
+        fetch('/auth/api/captcha')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('captcha-image').src = data.image;
+                }
+            })
+            .catch(err => console.error('加载验证码失败:', err));
+    }
+
+    function refreshCaptcha() {
+        fetch('/auth/api/captcha/refresh', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('captcha-image').src = data.image;
+                }
+            })
+            .catch(err => console.error('刷新验证码失败:', err));
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCaptcha);
+</script>
+{% endblock %}

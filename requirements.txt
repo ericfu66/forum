@@ -1,0 +1,46 @@
+# Flask 核心
+Flask==3.0.0
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+Werkzeug==3.0.1
+
+# 数据库
+SQLAlchemy==2.0.23
+psycopg[binary]==3.2.13
+
+# 环境变量
+python-dotenv==1.0.0
+
+# HTTP 请求
+requests==2.31.0
+
+# 安全
+bleach==6.1.0
+
+# 图片处理
+Pillow==11.1.0
+
+# 数学计算（向量相似度）
+# numpy 是可选的，当前使用纯 Python 实现
+# numpy==1.26.2
+
+# 异步任务和缓存
+redis==5.0.1
+celery[redis]==5.3.6
+
+# 数据库迁移
+Flask-Migrate==4.1.0
+
+# CSRF防护
+Flask-WTF==1.3.0
+
+# 实时推送
+Flask-SocketIO==5.6.1
+simple-websocket==1.1.0
+
+# Markdown解析
+markdown==3.7
+
+# 测试
+pytest==9.0.0
+pytest-flask==1.3.0

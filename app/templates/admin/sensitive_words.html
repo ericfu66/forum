@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}敏感词管理 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="card">
+        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+            <h2 class="card-title">🔤 敏感词管理</h2>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+        </div>
+
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+            敏感词用于用户名注册过滤。中文词使用子串匹配，英文词使用词边界匹配（避免误匹配）。
+        </p>
+
+        <!-- 添加敏感词 -->
+        <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+            <input type="text" id="new-word" class="form-control" placeholder="输入新敏感词..." style="max-width: 300px;">
+            <button class="btn btn-primary" onclick="addWord()">添加</button>
+        </div>
+
+        <!-- 敏感词列表 -->
+        <div id="word-list" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            {% for word in words %}
+            <span class="badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-tertiary); border-radius: 20px; font-size: 14px;">
+                {{ word }}
+                <button onclick="removeWord('{{ word }}')" style="background: none; border: none; color: var(--danger-color); cursor: pointer; font-size: 16px; padding: 0; line-height: 1;">&times;</button>
+            </span>
+            {% endfor %}
+        </div>
+
+        {% if not words %}
+        <p id="empty-state" style="color: var(--text-muted); text-align: center; padding: 40px 0;">暂无敏感词</p>
+        {% endif %}
+
+        <div style="margin-top: 24px; color: var(--text-muted); font-size: 13px;">
+            共 <span id="word-count">{{ words|length }}</span> 个敏感词
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function addWord() {
+    const input = document.getElementById('new-word');
+    const word = input.value.trim();
+    if (!word) return;
+
+    const res = await fetch('{{ url_for("admin.add_sensitive_word") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word })
+    });
+    const data = await res.json();
+    if (data.success) {
+        input.value = '';
+        location.reload();
+    } else {
+        Utils.showToast(data.message, 'warning');
+    }
+}
+
+async function removeWord(word) {
+    if (!confirm(`确定删除敏感词「${word}」？`)) return;
+
+    const res = await fetch('{{ url_for("admin.remove_sensitive_word") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word })
+    });
+    const data = await res.json();
+    if (data.success) {
+        location.reload();
+    } else {
+        Utils.showToast(data.message, 'warning');
+    }
+}
+
+// 回车添加
+document.getElementById('new-word').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addWord();
+});
+</script>
+{% endblock %}

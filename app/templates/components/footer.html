@@ -1,0 +1,67 @@
+{# 页脚组件 #}
+<footer class="footer">
+    <div class="footer-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <p style="margin: 0;">&copy; 2024 {{ site_name }} | 卢湾高级中学 · Powered by DeepSeek AI</p>
+            
+            <!-- 落英特效开关 -->
+            <div class="petals-toggle" style="display: flex; align-items: center; gap: 8px;">
+                <button id="petals-toggle-btn" onclick="togglePetals()" 
+                        class="btn btn-ghost btn-sm" 
+                        style="font-size: 0.85rem; padding: 4px 12px;"
+                        title="切换落英特效">
+                    🌸 <span id="petals-status">特效</span>
+                </button>
+                <select id="petals-theme-select" onchange="changePetalsTheme(this.value)"
+                        style="font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-color);">
+                    <option value="sakura">🌸 樱花</option>
+                    <option value="autumn">🍂 秋叶</option>
+                    <option value="snow">❄️ 雪花</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+// 落英特效控制
+function togglePetals() {
+    if (window.petalsEffect) {
+        const enabled = window.petalsEffect.toggle();
+        updatePetalsUI(enabled);
+    }
+}
+
+function changePetalsTheme(theme) {
+    if (window.petalsEffect) {
+        window.petalsEffect.setTheme(theme);
+    }
+}
+
+function updatePetalsUI(enabled) {
+    const statusEl = document.getElementById('petals-status');
+    const btnEl = document.getElementById('petals-toggle-btn');
+    if (statusEl) {
+        statusEl.textContent = enabled ? '开启' : '关闭';
+    }
+    if (btnEl) {
+        btnEl.style.opacity = enabled ? '1' : '0.6';
+    }
+}
+
+// 初始化UI状态
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        if (window.petalsEffect) {
+            const status = window.petalsEffect.getStatus();
+            updatePetalsUI(status.enabled);
+            
+            // 设置主题选择器
+            const themeSelect = document.getElementById('petals-theme-select');
+            if (themeSelect) {
+                themeSelect.value = status.theme;
+            }
+        }
+    }, 100);
+});
+</script>

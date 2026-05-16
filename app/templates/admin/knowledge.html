@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}知识库管理 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>🧠 知识库管理</h1>
+        <div style="display: flex; gap: 12px;">
+            <button onclick="showAddModal()" class="btn btn-primary">➕ 添加知识</button>
+            <button onclick="bulkRevectorize()" class="btn btn-outline" id="bulk-revectorize-btn">🔄 批量向量化</button>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">返回后台</a>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-post-total">-</div>
+            <div class="stat-label">帖子知识</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-post-vectorized">-</div>
+            <div class="stat-label">帖子已向量化</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-custom-total">-</div>
+            <div class="stat-label">自定义知识</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-custom-vectorized">-</div>
+            <div class="stat-label">自定义已向量化</div>
+        </div>
+    </div>
+
+    <!-- 搜索测试 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <h3 class="card-title">🔍 知识库搜索测试</h3>
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <input type="text" id="search-query" class="form-control" style="flex: 1;" placeholder="输入搜索内容测试知识库检索...">
+            <input type="number" id="search-limit" class="form-control" style="width: 100px;" value="5" min="1" max="20">
+            <input type="number" id="search-threshold" class="form-control" style="width: 120px;" value="0.3" min="0" max="1" step="0.1">
+            <button onclick="testSearch()" class="btn btn-primary" id="search-btn">搜索测试</button>
+        </div>
+        <div id="search-results" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <h4>📊 向量搜索 (<span id="vector-count">0</span>)</h4>
+                    <div id="vector-results" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+                <div>
+                    <h4>🔤 关键词搜索 (<span id="keyword-count">0</span>)</h4>
+                    <div id="keyword-results" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            </div>
+            <div style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                <h4>📝 最终上下文 (<span id="context-length">0</span> 字符)</h4>
+                <pre id="final-context" style="white-space: pre-wrap; font-size: 0.85rem; max-height: 150px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 切换 -->
+    <div class="card">
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <button onclick="switchTab('posts')" class="btn btn-ghost tab-btn active" id="tab-posts">📝 帖子知识</button>
+            <button onclick="switchTab('custom')" class="btn btn-ghost tab-btn" id="tab-custom">📁 自定义知识</button>
+        </div>
+
+        <!-- 帖子知识列表 -->
+        <div id="posts-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📚 帖子知识库</h3>
+                <select id="filter-embedding" class="form-control" style="width: 150px;" onchange="loadPostEntries()">
+                    <option value="">全部</option>
+                    <option value="true">已向量化</option>
+                    <option value="false">未向量化</option>
+                </select>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="padding: 12px; text-align: left;">ID</th>
+                        <th style="padding: 12px; text-align: left;">帖子</th>
+                        <th style="padding: 12px; text-align: left;">标题</th>
+                        <th style="padding: 12px; text-align: left;">版块</th>
+                        <th style="padding: 12px; text-align: left;">向量</th>
+                        <th style="padding: 12px; text-align: left;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="posts-tbody"><tr><td colspan="6" style="padding: 24px; text-align: center;">加载中...</td></tr></tbody>
+            </table>
+            <div id="posts-pagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 16px;"></div>
+        </div>
+
+        <!-- 自定义知识列表 -->
+        <div id="custom-panel" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📁 自定义知识库</h3>
+                <button onclick="showUploadModal()" class="btn btn-outline btn-sm">📤 上传文件</button>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="padding: 12px; text-align: left;">ID</th>
+                        <th style="padding: 12px; text-align: left;">标题</th>
+                        <th style="padding: 12px; text-align: left;">来源</th>
+                        <th style="padding: 12px; text-align: left;">分类</th>
+                        <th style="padding: 12px; text-align: left;">向量</th>
+                        <th style="padding: 12px; text-align: left;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="custom-tbody"><tr><td colspan="6" style="padding: 24px; text-align: center;">暂无数据</td></tr></tbody>
+            </table>
+            <div id="custom-pagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加知识模态框 -->
+<div id="add-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>➕ 添加自定义知识</h3>
+            <button onclick="closeAddModal()" class="btn btn-ghost">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom: 16px;">
+                <label>标题 *</label>
+                <input type="text" id="add-title" class="form-control" placeholder="知识标题">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label>分类</label>
+                <input type="text" id="add-category" class="form-control" placeholder="可选分类标签">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label>内容 *</label>
+                <textarea id="add-content" class="form-control" rows="10" placeholder="知识内容..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeAddModal()" class="btn btn-ghost">取消</button>
+            <button onclick="submitAddKnowledge()" class="btn btn-primary">添加</button>
+        </div>
+    </div>
+</div>
+
+<!-- 上传文件模态框 -->
+<div id="upload-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>📤 上传知识文件</h3>
+            <button onclick="closeUploadModal()" class="btn btn-ghost">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom: 16px;">
+                <label>选择文件 *</label>
+                <input type="file" id="upload-file" class="form-control" accept=".txt,.md,.json">
+                <small style="color: var(--text-muted);">支持 .txt, .md, .json 文件</small>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label>标题（可选）</label>
+                <input type="text" id="upload-title" class="form-control" placeholder="默认使用文件名">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label>分类</label>
+                <input type="text" id="upload-category" class="form-control" placeholder="可选分类标签">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeUploadModal()" class="btn btn-ghost">取消</button>
+            <button onclick="submitUpload()" class="btn btn-primary" id="upload-btn">上传</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card { text-align: center; padding: 16px; }
+.stat-value { font-size: 1.8rem; font-weight: bold; color: var(--primary-color); }
+.stat-label { color: var(--text-muted); font-size: 0.85rem; }
+.result-item { padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; }
+.result-item .title { font-weight: 500; }
+.result-item .score { background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+.tab-btn { border-radius: 0; border-bottom: 2px solid transparent; }
+.tab-btn.active { border-bottom-color: var(--primary-color); color: var(--primary-color); }
+.modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: var(--bg-primary); border-radius: 12px; width: 90%; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
+.modal-header h3 { margin: 0; }
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border-color); }
+</style>
+
+<script>
+let currentPostPage = 1, currentCustomPage = 1;
+const perPage = 20;
+
+document.addEventListener('DOMContentLoaded', function() { loadStats(); loadPostEntries(); loadCustomEntries(); });
+
+function loadStats() {
+    fetch('/ai/api/knowledge/stats').then(r => r.json()).then(data => {
+        if (data.success) {
+            document.getElementById('stat-post-total').textContent = data.total_count;
+            document.getElementById('stat-post-vectorized').textContent = data.vectorized_count;
+        }
+    });
+    fetch('/ai/api/custom-knowledge/stats').then(r => r.json()).then(data => {
+        if (data.success) {
+            document.getElementById('stat-custom-total').textContent = data.custom_total;
+            document.getElementById('stat-custom-vectorized').textContent = data.custom_vectorized;
+        }
+    });
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.getElementById('posts-panel').style.display = tab === 'posts' ? 'block' : 'none';
+    document.getElementById('custom-panel').style.display = tab === 'custom' ? 'block' : 'none';
+}
+
+function loadPostEntries(page = 1) {
+    currentPostPage = page;
+    let url = `/ai/api/knowledge/list?page=${page}&per_page=${perPage}`;
+    const filter = document.getElementById('filter-embedding').value;
+    if (filter) url += `&has_embedding=${filter}`;
+    fetch(url).then(r => r.json()).then(data => {
+        if (data.success) {
+            const tbody = document.getElementById('posts-tbody');
+            if (data.entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center;">暂无数据</td></tr>';
+            } else {
+                tbody.innerHTML = data.entries.map(e => `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px;">${e.id}</td>
+                        <td style="padding: 12px;"><a href="/post/${e.post_id}" target="_blank">${e.post_id}</a></td>
+                        <td style="padding: 12px;">${e.title.substring(0, 25)}${e.title.length > 25 ? '...' : ''}</td>
+                        <td style="padding: 12px;">${e.board_name || '-'}</td>
+                        <td style="padding: 12px;">${e.has_embedding ? '✓' : '✗'}</td>
+                        <td style="padding: 12px;">
+                            <button onclick="revectorizePost(${e.post_id})" class="btn btn-outline btn-sm">🔄</button>
+                            <button onclick="deletePostKnowledge(${e.post_id})" class="btn btn-outline btn-sm" style="color:var(--danger-color)">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            renderPagination('posts', data.total, page);
+        }
+    });
+}
+
+function loadCustomEntries(page = 1) {
+    currentCustomPage = page;
+    fetch(`/ai/api/custom-knowledge/list?page=${page}&per_page=${perPage}`).then(r => r.json()).then(data => {
+        if (data.success) {
+            const tbody = document.getElementById('custom-tbody');
+            if (data.entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center;">暂无数据，点击添加</td></tr>';
+            } else {
+                tbody.innerHTML = data.entries.map(e => `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px;">${e.id}</td>
+                        <td style="padding: 12px;">${e.title.substring(0, 25)}${e.title.length > 25 ? '...' : ''}</td>
+                        <td style="padding: 12px;">${e.source_type === 'file' ? '📁' : '✏️'} ${e.source_name || (e.source_type === 'file' ? '文件' : '手动')}</td>
+                        <td style="padding: 12px;">${e.category || '-'}</td>
+                        <td style="padding: 12px;">${e.has_embedding ? '✓' : '✗'}</td>
+                        <td style="padding: 12px;">
+                            <button onclick="revectorizeCustom(${e.id})" class="btn btn-outline btn-sm">🔄</button>
+                            <button onclick="deleteCustom(${e.id})" class="btn btn-outline btn-sm" style="color:var(--danger-color)">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            renderPagination('custom', data.total, page);
+        }
+    });
+}
+
+function renderPagination(type, total, page) {
+    const totalPages = Math.ceil(total / perPage);
+    const el = document.getElementById(`${type}-pagination`);
+    if (totalPages <= 1) { el.innerHTML = ''; return; }
+    let html = page > 1 ? `<button onclick="load${type === 'posts' ? 'Post' : 'Custom'}Entries(${page - 1})" class="btn btn-ghost btn-sm">上一页</button>` : '';
+    html += `<span style="padding: 8px;">${page}/${totalPages}</span>`;
+    html += page < totalPages ? `<button onclick="load${type === 'posts' ? 'Post' : 'Custom'}Entries(${page + 1})" class="btn btn-ghost btn-sm">下一页</button>` : '';
+    el.innerHTML = html;
+}
+
+function testSearch() {
+    const query = document.getElementById('search-query').value.trim();
+    if (!query) { alert('请输入搜索内容'); return; }
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true; btn.textContent = '搜索中...';
+    fetch('/ai/api/knowledge/search-test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, limit: parseInt(document.getElementById('search-limit').value) || 5, threshold: parseFloat(document.getElementById('search-threshold').value) || 0.3 })
+    }).then(r => r.json()).then(data => {
+        btn.disabled = false; btn.textContent = '搜索测试';
+        if (data.success) {
+            document.getElementById('search-results').style.display = 'block';
+            document.getElementById('vector-count').textContent = data.vector_search.count;
+            document.getElementById('vector-results').innerHTML = data.vector_search.results.map(r => `<div class="result-item"><div class="title">${r.title} <span class="score">${r.similarity_score}</span> <span style="font-size:0.7rem;background:${r.source_type === 'custom' ? 'var(--success-color)' : 'var(--info-color)'};color:white;padding:1px 4px;border-radius:3px;">${r.source_type === 'custom' ? '自定义' : '帖子'}</span></div><div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;">${r.content}</div></div>`).join('') || '无结果';
+            document.getElementById('keyword-count').textContent = data.keyword_search.count;
+            document.getElementById('keyword-results').innerHTML = data.keyword_search.results.map(r => `<div class="result-item"><div class="title">${r.title}</div><div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;">${r.content}</div></div>`).join('') || '无结果';
+            document.getElementById('context-length').textContent = data.final_context.length;
+            document.getElementById('final-context').textContent = data.final_context.preview || '(空)';
+        } else { alert(data.message); }
+    }).catch(() => { btn.disabled = false; btn.textContent = '搜索测试'; });
+}
+
+function revectorizePost(id) { if (!confirm('确定？')) return; fetch(`/ai/api/knowledge/revectorize/${id}`, { method: 'POST' }).then(r => r.json()).then(d => { alert(d.message); loadStats(); loadPostEntries(currentPostPage); }); }
+function deletePostKnowledge(id) { if (!confirm('确定删除此知识条目？（不会删除原帖）')) return; fetch(`/ai/api/knowledge/${id}`, { method: 'DELETE' }).then(r => r.json()).then(d => { alert(d.message); loadStats(); loadPostEntries(currentPostPage); }); }
+function revectorizeCustom(id) { if (!confirm('确定？')) return; fetch(`/ai/api/custom-knowledge/${id}/revectorize`, { method: 'POST' }).then(r => r.json()).then(d => { alert(d.message); loadStats(); loadCustomEntries(currentCustomPage); }); }
+function deleteCustom(id) { if (!confirm('确定删除？')) return; fetch(`/ai/api/custom-knowledge/${id}`, { method: 'DELETE' }).then(r => r.json()).then(d => { alert(d.message); loadStats(); loadCustomEntries(currentCustomPage); }); }
+function bulkRevectorize() { if (!confirm('确定批量向量化？')) return; const btn = document.getElementById('bulk-revectorize-btn'); btn.disabled = true; btn.textContent = '处理中...'; fetch('/ai/api/knowledge/bulk-revectorize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batch_size: 50 }) }).then(r => r.json()).then(d => { btn.disabled = false; btn.textContent = '🔄 批量向量化'; alert(`完成: ${d.success}/${d.total}`); loadStats(); loadPostEntries(currentPostPage); }); }
+
+function showAddModal() { document.getElementById('add-modal').style.display = 'flex'; }
+function closeAddModal() { document.getElementById('add-modal').style.display = 'none'; }
+function showUploadModal() { document.getElementById('upload-modal').style.display = 'flex'; }
+function closeUploadModal() { document.getElementById('upload-modal').style.display = 'none'; }
+
+function submitAddKnowledge() {
+    const title = document.getElementById('add-title').value.trim();
+    const content = document.getElementById('add-content').value.trim();
+    if (!title || !content) { alert('标题和内容不能为空'); return; }
+    fetch('/ai/api/custom-knowledge/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, content, category: document.getElementById('add-category').value.trim() }) })
+    .then(r => r.json()).then(d => {
+        if (d.success) { alert('添加成功'); closeAddModal(); document.getElementById('add-title').value = ''; document.getElementById('add-content').value = ''; document.getElementById('add-category').value = ''; loadStats(); loadCustomEntries(); switchTab('custom'); }
+        else { alert(d.message); }
+    });
+}
+
+function submitUpload() {
+    const file = document.getElementById('upload-file').files[0];
+    if (!file) { alert('请选择文件'); return; }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', document.getElementById('upload-title').value.trim());
+    formData.append('category', document.getElementById('upload-category').value.trim());
+    const btn = document.getElementById('upload-btn'); btn.disabled = true; btn.textContent = '上传中...';
+    fetch('/ai/api/custom-knowledge/upload', { method: 'POST', body: formData })
+    .then(r => r.json()).then(d => {
+        btn.disabled = false; btn.textContent = '上传';
+        if (d.success) { alert('上传成功'); closeUploadModal(); document.getElementById('upload-file').value = ''; document.getElementById('upload-title').value = ''; document.getElementById('upload-category').value = ''; loadStats(); loadCustomEntries(); switchTab('custom'); }
+        else { alert(d.message); }
+    }).catch(() => { btn.disabled = false; btn.textContent = '上传'; });
+}
+</script>
+{% endblock %}

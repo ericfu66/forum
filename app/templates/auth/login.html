@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-page {
+        min-height: calc(100vh - 60px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Atmospheric gradient background */
+    .login-page::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+            radial-gradient(ellipse 80% 60% at 20% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 60% 50% at 80% 90%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse 40% 40% at 50% 50%, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    [data-theme="dark"] .login-page::before {
+        background:
+            radial-gradient(ellipse 80% 60% at 20% 10%, rgba(129, 140, 248, 0.08) 0%, transparent 60%),
+            radial-gradient(ellipse 60% 50% at 80% 90%, rgba(236, 72, 153, 0.05) 0%, transparent 50%),
+            radial-gradient(ellipse 40% 40% at 50% 50%, rgba(6, 182, 212, 0.04) 0%, transparent 50%);
+    }
+
+    .login-card {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 420px;
+        background: var(--bg-surface);
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        animation: loginCardIn 0.6s var(--ease-out) both;
+    }
+
+    @keyframes loginCardIn {
+        from {
+            opacity: 0;
+            transform: translateY(24px) scale(0.97);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Top accent bar with gradient */
+    .login-accent-bar {
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary) 0%, #ec4899 50%, var(--accent-cyan) 100%);
+    }
+
+    .login-card-header {
+        text-align: center;
+        padding: 36px 36px 0;
+    }
+
+    .login-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-lg);
+        background: var(--primary-soft);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        color: var(--primary);
+    }
+
+    [data-theme="dark"] .login-icon {
+        background: rgba(129, 140, 248, 0.12);
+    }
+
+    .login-title {
+        font-family: var(--font-display);
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-strong);
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+    }
+
+    .login-subtitle {
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+
+    .login-form {
+        padding: 28px 36px 32px;
+    }
+
+    .login-form .form-group {
+        margin-bottom: 20px;
+    }
+
+    .login-form .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-body);
+        margin-bottom: 8px;
+        letter-spacing: 0.2px;
+    }
+
+    .login-form .form-control {
+        width: 100%;
+        padding: 12px 14px;
+        background: var(--bg-muted);
+        border: 1.5px solid transparent;
+        border-radius: var(--radius-md);
+        font-size: 14.5px;
+        font-family: var(--font-body);
+        color: var(--text-strong);
+        transition: all var(--duration-fast) var(--ease-out);
+        outline: none;
+    }
+
+    .login-form .form-control:focus {
+        background: var(--bg-surface);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+
+    .login-form .form-control::placeholder {
+        color: var(--text-faint);
+    }
+
+    /* Captcha row */
+    .captcha-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .captcha-row .form-control {
+        flex: 1;
+    }
+
+    .captcha-img {
+        height: 44px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--border-strong);
+        transition: border-color var(--duration-fast);
+    }
+
+    .captcha-img:hover {
+        border-color: var(--primary);
+    }
+
+    /* Remember me checkbox */
+    .remember-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+
+    .remember-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        color: var(--text-body);
+        cursor: pointer;
+    }
+
+    .remember-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
+        cursor: pointer;
+    }
+
+    /* Submit button */
+    .login-btn {
+        width: 100%;
+        padding: 13px 24px;
+        background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 15px;
+        font-weight: 600;
+        font-family: var(--font-display);
+        cursor: pointer;
+        transition: all var(--duration-normal) var(--ease-out);
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .login-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+        transform: translateX(-100%);
+        transition: transform 0.5s ease;
+    }
+
+    .login-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
+    }
+
+    .login-btn:hover::before {
+        transform: translateX(100%);
+    }
+
+    .login-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Footer */
+    .login-footer {
+        text-align: center;
+        padding: 0 36px 32px;
+    }
+
+    .login-footer p {
+        font-size: 13.5px;
+        color: var(--text-muted);
+    }
+
+    .login-footer a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color var(--duration-fast);
+    }
+
+    .login-footer a:hover {
+        color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+    /* Stagger animation for form groups */
+    .login-form .form-group:nth-child(1) { animation: fieldIn 0.4s var(--ease-out) 0.15s both; }
+    .login-form .form-group:nth-child(2) { animation: fieldIn 0.4s var(--ease-out) 0.25s both; }
+    .login-form .form-group:nth-child(3) { animation: fieldIn 0.4s var(--ease-out) 0.35s both; }
+    .remember-row { animation: fieldIn 0.4s var(--ease-out) 0.45s both; }
+    .login-btn { animation: fieldIn 0.4s var(--ease-out) 0.55s both; }
+
+    @keyframes fieldIn {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Dark theme color overrides */
+    [data-theme="dark"] .login-btn {
+        background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+        box-shadow: 0 4px 16px rgba(129, 140, 248, 0.25);
+    }
+
+    [data-theme="dark"] .login-btn:hover {
+        box-shadow: 0 6px 24px rgba(129, 140, 248, 0.35);
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        .login-card-header,
+        .login-form,
+        .login-footer {
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .login-card-header {
+            padding-top: 28px;
+        }
+
+        .login-title {
+            font-size: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-accent-bar"></div>
+        <div class="login-card-header">
+            <div class="login-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10,17 15,12 10,7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+            </div>
+            <h2 class="login-title">欢迎回来</h2>
+            <p class="login-subtitle">登录你的 {{ site_name }} 账户</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
+            <div class="form-group">
+                <label class="form-label">用户名 / 邮箱</label>
+                <input type="text" name="username" class="form-control" placeholder="请输入用户名或邮箱" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">密码</label>
+                <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">验证码</label>
+                <div class="captcha-row">
+                    <input type="text" name="captcha" class="form-control" placeholder="请输入验证码" required maxlength="4">
+                    <img id="captcha-image" src="" alt="验证码" class="captcha-img"
+                        onclick="refreshCaptcha()" title="点击刷新验证码">
+                </div>
+            </div>
+
+            <div class="remember-row">
+                <label class="remember-label">
+                    <input type="checkbox" name="remember">
+                    <span>记住我</span>
+                </label>
+            </div>
+
+            <button type="submit" class="login-btn">登录</button>
+        </form>
+
+        <div class="login-footer">
+            <p>还没有账号？ <a href="{{ url_for('auth.register') }}">立即注册</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadCaptcha() {
+        fetch('/auth/api/captcha')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('captcha-image').src = data.image;
+                }
+            })
+            .catch(err => console.error('加载验证码失败:', err));
+    }
+
+    function refreshCaptcha() {
+        fetch('/auth/api/captcha/refresh', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('captcha-image').src = data.image;
+                }
+            })
+            .catch(err => console.error('刷新验证码失败:', err));
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCaptcha);
+</script>
+{% endblock %}

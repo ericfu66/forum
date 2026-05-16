@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+
+{% block title %}发帖 - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Markdown工具栏样式 */
+.md-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.md-toolbar-btn {
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.md-toolbar-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.md-toolbar-btn:active {
+    transform: scale(0.95);
+}
+
+.md-toolbar-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+.md-editor {
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    border-top: none;
+    font-family: 'Consolas', 'Monaco', monospace;
+    line-height: 1.6;
+}
+
+/* 预览区域 */
+.md-preview {
+    display: none;
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.md-preview.active {
+    display: block;
+}
+
+.md-editor-container.preview-mode .md-editor {
+    display: none;
+}
+
+.md-editor-container.preview-mode .md-preview {
+    display: block;
+}
+
+/* 媒体上传区域 */
+.media-upload-section {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 2px dashed var(--border-color);
+}
+
+.media-upload-section h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.upload-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+}
+
+.upload-btn input[type="file"] {
+    display: none;
+}
+
+/* 图片预览 */
+.image-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: var(--spacing-sm);
+}
+
+.image-preview-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+}
+
+.image-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-preview-item .remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 语音预览 */
+.audio-preview {
+    margin-top: var(--spacing-sm);
+    padding: 10px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.audio-preview audio {
+    flex: 1;
+    height: 40px;
+}
+
+.audio-preview .remove-btn {
+    padding: 6px 12px;
+    background: #F44336;
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+/* 录音按钮 */
+.record-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.record-btn.recording {
+    background: #F44336;
+    color: white;
+    border-color: #F44336;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* 拖拽上传 */
+#image-drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    .md-toolbar {
+        gap: 2px;
+        padding: 6px;
+    }
+
+    .md-toolbar-btn {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+
+    .md-toolbar-btn span:last-child {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📝 发布新帖</h2>
+                </div>
+
+                <form method="POST" action="{{ url_for('post.create') }}" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">版块</label>
+                        <select name="board_id" class="form-control" required>
+                            <option value="">选择版块...</option>
+                            {% for board in boards %}
+                            <option value="{{ board.id }}">{{ board.icon }} {{ board.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">标题</label>
+                        <input type="text" name="title" class="form-control" placeholder="请输入帖子标题" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">内容（支持Markdown）</label>
+                        <div class="md-editor-container">
+                            <!-- Markdown工具栏 -->
+                            <div class="md-toolbar">
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('bold')" title="粗体 (Ctrl+B)">
+                                    <span>𝐁</span><span>粗体</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('italic')" title="斜体 (Ctrl+I)">
+                                    <span>𝐼</span><span>斜体</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('strikethrough')" title="删除线">
+                                    <span>S̶</span><span>删除线</span>
+                                </button>
+                                <div class="md-toolbar-divider"></div>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('h2')" title="标题2">
+                                    <span>H2</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('h3')" title="标题3">
+                                    <span>H3</span>
+                                </button>
+                                <div class="md-toolbar-divider"></div>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('quote')" title="引用">
+                                    <span>❝</span><span>引用</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('code')" title="代码">
+                                    <span>&lt;/&gt;</span><span>代码</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('codeblock')" title="代码块">
+                                    <span>📋</span><span>代码块</span>
+                                </button>
+                                <div class="md-toolbar-divider"></div>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('ul')" title="无序列表">
+                                    <span>•</span><span>列表</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('ol')" title="有序列表">
+                                    <span>1.</span><span>编号</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('task')" title="任务列表">
+                                    <span>☑</span><span>任务</span>
+                                </button>
+                                <div class="md-toolbar-divider"></div>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('link')" title="链接">
+                                    <span>🔗</span><span>链接</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('image')" title="图片">
+                                    <span>🖼</span><span>图片</span>
+                                </button>
+                                <button type="button" class="md-toolbar-btn" onclick="mdInsert('hr')" title="分隔线">
+                                    <span>—</span><span>分隔</span>
+                                </button>
+                                <div class="md-toolbar-divider"></div>
+                                <button type="button" class="md-toolbar-btn" onclick="togglePreview()" title="预览">
+                                    <span>👁</span><span>预览</span>
+                                </button>
+                            </div>
+                            <textarea id="content-editor" name="content" class="form-control md-editor" rows="12" placeholder="请输入帖子内容...支持Markdown语法" required></textarea>
+                            <div id="content-preview" class="md-preview post-content"></div>
+                        </div>
+                    </div>
+
+                    <!-- 图片上传 -->
+                    <div class="form-group">
+                        <div class="media-upload-section" id="image-drop-zone">
+                            <h4>🖼️ 上传图片（可选，最多9张）</h4>
+                            <div class="upload-area">
+                                <label class="upload-btn" id="image-upload-btn">
+                                    <span>📷</span>
+                                    <span>选择图片或拖拽到此处</span>
+                                    <input type="file" name="images" id="image-input" multiple accept="image/*">
+                                </label>
+                                <small style="color: var(--text-muted);">支持 PNG、JPG、GIF、WebP 格式</small>
+                            </div>
+                            <div class="image-preview-container" id="image-preview"></div>
+                        </div>
+                    </div>
+
+                    <!-- 语音上传 -->
+                    <div class="form-group">
+                        <div class="media-upload-section">
+                            <h4>🎤 上传语音（可选）</h4>
+                            <div class="upload-area" style="flex-direction: row; flex-wrap: wrap;">
+                                <label class="upload-btn">
+                                    <span>📁</span>
+                                    <span>选择音频文件</span>
+                                    <input type="file" name="audio" id="audio-input" accept="audio/*">
+                                </label>
+                                <button type="button" class="record-btn" id="record-btn" onclick="toggleRecording()">
+                                    <span>🎙️</span>
+                                    <span id="record-text">开始录音</span>
+                                </button>
+                                <small style="color: var(--text-muted); width: 100%;">支持 MP3、WAV、OGG、M4A 格式，或直接录音</small>
+                            </div>
+                            <div class="audio-preview" id="audio-preview" style="display: none;">
+                                <span>🎵</span>
+                                <audio id="audio-player" controls></audio>
+                                <button type="button" class="remove-btn" onclick="removeAudio()">删除</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">标签（可选，用逗号分隔）</label>
+                        <input type="text" name="tags" id="tags-input" class="form-control" placeholder="例如：技术, 讨论, 问答">
+                        <button type="button" class="md-toolbar-btn" onclick="suggestTags()" style="margin-top:8px;font-size:12px;">
+                            <span>🤖</span><span>AI推荐标签</span>
+                        </button>
+                        <div id="tag-suggestions" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button type="submit" class="btn btn-primary">发布帖子</button>
+                        <a href="{{ url_for('main.index') }}" class="btn btn-ghost">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/post-editor.js') }}"></script>
+<script>
+// 初始化编辑器
+postEditor = new PostEditor({ mode: 'create' });
+
+// 拖拽上传支持
+const dropZone = document.getElementById('image-drop-zone');
+if (dropZone) {
+    ['dragenter', 'dragover'].forEach(evt => {
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+    });
+    dropZone.addEventListener('drop', e => {
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        if (files.length) {
+            const dt = new DataTransfer();
+            files.forEach(f => dt.items.add(f));
+            document.getElementById('image-input').files = dt.files;
+            document.getElementById('image-input').dispatchEvent(new Event('change'));
+        }
+    });
+}
+
+// 全局函数（供onclick调用）
+function mdInsert(type) { postEditor.mdInsert(type); }
+function togglePreview() { postEditor.togglePreview(); }
+
+// AI标签推荐
+async function suggestTags() {
+    const title = document.querySelector('[name="title"]').value;
+    const content = document.getElementById('content-editor').value;
+    if (!title && !content) {
+        Utils.showToast('请先输入标题或内容', 'warning');
+        return;
+    }
+    try {
+        const res = await Utils.post('/ai/api/tags/suggest', {title, content});
+        if (res.success && res.tags && res.tags.length > 0) {
+            const container = document.getElementById('tag-suggestions');
+            container.style.display = 'flex';
+            container.innerHTML = res.tags.map(t =>
+                `<span class="tag-pill" style="cursor:pointer;padding:4px 10px;background:var(--primary-light);border-radius:12px;font-size:13px;" onclick="addTag('${t}')">#${t}</span>`
+            ).join('');
+        } else {
+            Utils.showToast('未能生成标签建议', 'info');
+        }
+    } catch (e) {
+        Utils.showToast('获取标签失败', 'danger');
+    }
+}
+
+function addTag(tag) {
+    const input = document.getElementById('tags-input');
+    const current = input.value.split(',').map(s => s.trim()).filter(Boolean);
+    if (!current.includes(tag)) {
+        current.push(tag);
+        input.value = current.join(', ');
+    }
+}
+
+// 语音上传相关
+const audioInput = document.getElementById('audio-input');
+const audioPreview = document.getElementById('audio-preview');
+const audioPlayer = document.getElementById('audio-player');
+const recordBtn = document.getElementById('record-btn');
+const recordText = document.getElementById('record-text');
+
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let recordedBlob = null;
+
+audioInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) showAudioPreview(URL.createObjectURL(file));
+});
+
+function showAudioPreview(url) {
+    audioPlayer.src = url;
+    audioPreview.style.display = 'flex';
+}
+
+function removeAudio() {
+    audioInput.value = '';
+    audioPlayer.src = '';
+    audioPreview.style.display = 'none';
+    recordedBlob = null;
+}
+
+async function toggleRecording() {
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = (e) => { audioChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                showAudioPreview(URL.createObjectURL(recordedBlob));
+                const file = new File([recordedBlob], 'recording.webm', { type: 'audio/webm' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                audioInput.files = dt.files;
+                stream.getTracks().forEach(track => track.stop());
+            };
+            mediaRecorder.start();
+            isRecording = true;
+            recordBtn.classList.add('recording');
+            recordText.textContent = '停止录音';
+        } catch (err) {
+            Utils.showToast('无法访问麦克风，请检查权限设置', 'danger');
+        }
+    } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        recordBtn.classList.remove('recording');
+        recordText.textContent = '开始录音';
+    }
+}
+</script>
+{% endblock %}

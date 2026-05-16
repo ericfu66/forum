@@ -1,0 +1,1396 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ============ Detail Layout ============ */
+.detail-wrapper {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 40px 80px;
+}
+
+@media (min-width: 1200px) {
+    .detail-wrapper {
+        max-width: 1100px;
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 48px;
+        padding-top: 48px;
+    }
+}
+
+/* ============ Breadcrumb ============ */
+.breadcrumb-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    grid-column: 1 / -1;
+}
+
+.breadcrumb-bar a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
+}
+
+.breadcrumb-bar a:hover { color: var(--primary); }
+
+.breadcrumb-sep {
+    color: var(--text-faint);
+    font-size: 11px;
+}
+
+.breadcrumb-current {
+    color: var(--text-body);
+    font-weight: 500;
+}
+
+/* ============ Article ============ */
+.article-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    animation: detailFadeUp 0.6s var(--ease-out) both;
+}
+
+@keyframes detailFadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.article-header {
+    padding: 40px 40px 0;
+}
+
+.article-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    letter-spacing: 0.3px;
+}
+
+.badge-ai {
+    color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.badge-pin {
+    color: var(--accent-amber);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.article-title {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text-strong);
+    letter-spacing: -0.5px;
+    margin-bottom: 24px;
+}
+
+/* Author bar */
+.author-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+}
+
+.author-avatar-lg {
+    width: 44px; height: 44px;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+    border: 2px solid var(--bg-muted);
+}
+
+.author-info { flex: 1; }
+
+.author-name {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.author-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.author-meta span + span::before {
+    content: '·';
+    margin: 0 6px;
+    color: var(--text-faint);
+}
+
+/* ============ Content ============ */
+.article-content {
+    padding: 32px 40px;
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--text-body);
+}
+
+.article-content h1,
+.article-content h2,
+.article-content h3 {
+    font-family: var(--font-display);
+    color: var(--text-strong);
+    margin-top: 2em;
+    margin-bottom: 0.8em;
+    line-height: 1.35;
+}
+
+.article-content h1 { font-size: 28px; }
+.article-content h2 {
+    font-size: 22px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.article-content h3 { font-size: 18px; }
+
+.article-content p {
+    margin-bottom: 1.2em;
+}
+
+.article-content a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--primary-soft);
+    transition: text-decoration-color var(--duration-fast);
+}
+
+.article-content a:hover {
+    text-decoration-color: var(--primary);
+}
+
+.article-content img {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+    margin: 1.5em 0;
+}
+
+.article-content blockquote {
+    margin: 1.5em 0;
+    padding: 16px 24px;
+    border-left: 3px solid var(--primary);
+    background: var(--primary-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-body);
+    font-style: italic;
+}
+
+.article-content pre {
+    margin: 1.5em 0;
+    padding: 20px 24px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.article-content code {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.9em;
+}
+
+.article-content :not(pre) > code {
+    background: var(--bg-muted);
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: var(--accent-rose);
+}
+
+.article-content ul, .article-content ol {
+    margin: 1em 0;
+    padding-left: 1.8em;
+}
+
+.article-content li { margin-bottom: 0.4em; }
+
+.article-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5em 0;
+    font-size: 14px;
+}
+
+.article-content th, .article-content td {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+
+.article-content th {
+    background: var(--bg-muted);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.article-content hr {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: 2em 0;
+}
+
+/* ============ Media Gallery ============ */
+.media-section {
+    padding: 0 40px 8px;
+}
+
+.image-gallery {
+    display: grid;
+    gap: 10px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.image-gallery.g-1 { grid-template-columns: 1fr; }
+.image-gallery.g-2 { grid-template-columns: repeat(2, 1fr); }
+.image-gallery.g-3 { grid-template-columns: repeat(3, 1fr); }
+
+.gallery-img {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    aspect-ratio: 4/3;
+    background: var(--bg-muted);
+}
+
+.gallery-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s var(--ease-out);
+}
+
+.gallery-img:hover img { transform: scale(1.05); }
+
+.gallery-img::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.15) 0%, transparent 40%);
+    opacity: 0;
+    transition: opacity var(--duration-fast);
+    pointer-events: none;
+}
+
+.gallery-img:hover::after { opacity: 1; }
+
+.audio-player-box {
+    margin-top: 12px;
+    padding: 16px 20px;
+    background: var(--bg-muted);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.audio-player-box svg { color: var(--primary); flex-shrink: 0; }
+
+.audio-player-box audio {
+    flex: 1;
+    height: 36px;
+}
+
+/* ============ Tags ============ */
+.tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 40px 24px;
+}
+
+.tag-pill {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 4px 14px;
+    border-radius: var(--radius-full);
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.tag-pill:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* ============ Footer Actions ============ */
+.article-footer {
+    padding: 20px 40px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.stats-row {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.stat-item svg { opacity: 0.6; }
+
+.actions-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-display);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-body);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    border-color: var(--border-strong);
+    background: var(--bg-muted);
+    color: var(--text-strong);
+}
+
+.action-btn.liked {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.action-btn.danger:hover {
+    border-color: var(--accent-rose);
+    color: var(--accent-rose);
+    background: rgba(244, 63, 94, 0.06);
+}
+
+/* ============ Lightbox ============ */
+.lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+
+.lightbox-overlay.active {
+    display: flex;
+    animation: lbFadeIn 0.25s var(--ease-out);
+}
+
+@keyframes lbFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.lightbox-overlay img {
+    max-width: 92vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    cursor: default;
+    animation: lbScaleIn 0.3s var(--ease-spring);
+}
+
+@keyframes lbScaleIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.lb-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    width: 40px; height: 40px;
+    border-radius: var(--radius-full);
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--duration-fast);
+}
+
+.lb-close:hover { background: rgba(255,255,255,0.2); }
+
+.lb-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px; height: 48px;
+    border-radius: var(--radius-full);
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: all var(--duration-fast);
+}
+
+.lb-nav:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+.lb-prev { left: 20px; }
+.lb-next { right: 20px; }
+
+.lb-counter {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    font-family: var(--font-display);
+}
+
+/* ============ Comments ============ */
+.comments-panel {
+    margin-top: 40px;
+    animation: detailFadeUp 0.6s var(--ease-out) 0.15s both;
+}
+
+.comments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.comments-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.comments-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--bg-muted);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+}
+
+/* Comment form */
+.comment-compose {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 28px;
+}
+
+.comment-compose textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 14px 16px;
+    background: var(--bg-muted);
+    border: 1.5px solid transparent;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-strong);
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.comment-compose textarea:focus {
+    background: var(--bg-surface);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.comment-compose textarea::placeholder { color: var(--text-faint); }
+
+.comment-compose-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.compose-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-full);
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.compose-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.compose-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.compose-login-hint {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.compose-login-hint a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.compose-login-hint a:hover { text-decoration: underline; }
+
+/* Comment items */
+.comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.comment-item {
+    display: flex;
+    gap: 14px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    animation: commentSlide 0.4s var(--ease-out) both;
+}
+
+.comment-item:last-child { border-bottom: none; }
+
+@keyframes commentSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.comment-avatar {
+    flex-shrink: 0;
+}
+
+.comment-avatar img {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+}
+
+.comment-ai-avatar {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.comment-body { flex: 1; min-width: 0; }
+
+.comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.comment-author-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.comment-ai-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
+.comment-time {
+    font-size: 12px;
+    color: var(--text-faint);
+}
+
+.comment-text {
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-body);
+}
+
+.comment-text a {
+    color: var(--primary);
+}
+
+.comment-ai {
+    background: var(--primary-soft);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin-top: 4px;
+}
+
+.comment-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+
+.comment-empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.comment-empty p {
+    font-size: 14px;
+}
+
+/* ============ TOC Sidebar ============ */
+.toc-aside {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+}
+
+.toc-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.toc-heading {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toc-heading svg { opacity: 0.5; }
+
+.toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.toc-link {
+    display: block;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    border-left: 2px solid transparent;
+    transition: all var(--duration-fast) var(--ease-out);
+    line-height: 1.4;
+}
+
+.toc-link:hover {
+    color: var(--text-body);
+    background: var(--bg-muted);
+}
+
+.toc-link.active {
+    color: var(--primary);
+    border-left-color: var(--primary);
+    background: var(--primary-soft);
+    font-weight: 500;
+}
+
+.toc-link.level-3 {
+    padding-left: 24px;
+    font-size: 12.5px;
+}
+
+/* ============ Responsive ============ */
+@media (max-width: 768px) {
+    .detail-wrapper {
+        padding: 24px 20px 60px;
+        display: block;
+    }
+
+    .breadcrumb-bar { margin-bottom: 20px; }
+
+    .article-header { padding: 24px 20px 0; }
+    .article-title { font-size: 24px; }
+    .article-content { padding: 20px; font-size: 15px; }
+    .media-section { padding: 0 20px; }
+    .tags-row { padding: 8px 20px 20px; }
+    .article-footer { padding: 16px 20px; }
+
+    .image-gallery.g-2,
+    .image-gallery.g-3 { grid-template-columns: repeat(2, 1fr); }
+
+    .actions-row { width: 100%; }
+    .action-btn { flex: 1; justify-content: center; }
+
+    .toc-aside { display: none; }
+}
+
+@media (max-width: 480px) {
+    .image-gallery.g-2,
+    .image-gallery.g-3 { grid-template-columns: 1fr; }
+    .stats-row { gap: 12px; }
+    .action-btn { padding: 8px 12px; font-size: 12px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-wrapper">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb-bar">
+        <a href="{{ url_for('main.index') }}">首页</a>
+        <span class="breadcrumb-sep">›</span>
+        {% if post.board %}
+        <a href="{{ url_for('post.board', slug=post.board.slug) }}">{{ post.board.name }}</a>
+        <span class="breadcrumb-sep">›</span>
+        {% endif %}
+        <span class="breadcrumb-current">{{ post.title[:40] }}{% if post.title|length > 40 %}…{% endif %}</span>
+    </nav>
+
+    <!-- Main Article -->
+    <main>
+        <article class="article-card">
+            <!-- Header -->
+            <header class="article-header">
+                <div class="article-badges">
+                    {% if post.is_pinned %}
+                    <span class="badge-tag badge-pin">置顶</span>
+                    {% endif %}
+                    {% if post.is_ai_generated %}
+                    <span class="badge-tag badge-ai">AI 生成</span>
+                    {% endif %}
+                </div>
+                <h1 class="article-title">{{ post.title }}</h1>
+                <div class="author-bar">
+                    <img src="{{ post.author.avatar }}" alt="" class="author-avatar-lg">
+                    <div class="author-info">
+                        <div class="author-name">{{ post.author.username }}
+                            <span class="level-badge" style="margin-left: 6px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 10px; font-size: 11px; font-weight: 600; vertical-align: middle;">
+                                Lv.{{ post.author.level if post.author.level else 1 }} {{ post.author.level_name if post.author.level_name else '初心者' }}
+                            </span>
+                        </div>
+                        <div class="author-meta">
+                            <span data-time="{{ post.created_at }}">{{ post.created_at }}</span>
+                            {% if post.board %}
+                            <span>{{ post.board.name }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="article-content" id="post-content">
+                {{ post.content|markdown }}
+            </div>
+
+            <!-- Summary -->
+            {% if post.summary %}
+            <div class="post-summary" style="margin: 0 40px; padding: 16px 20px; background: var(--primary-soft, rgba(99,102,241,0.08)); border-radius: var(--radius-md, 8px); border-left: 3px solid var(--primary-color, #6366f1);">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-weight:600;color:var(--primary-color, #6366f1);font-size:13px;">📋 TL;DR</span>
+                </div>
+                <div style="font-size:14px;line-height:1.6;color:var(--text-body, #333);">
+                    {{ post.summary }}
+                </div>
+            </div>
+            {% else %}
+            <div id="summary-placeholder" style="margin: 0 40px; display: none;">
+                <button class="action-btn" onclick="loadSummary({{ post.id }})" style="font-size:12px;opacity:0.7;">📋 生成摘要</button>
+            </div>
+            {% endif %}
+
+            <!-- Media -->
+            {% if post.images or post.audio_url %}
+            <div class="media-section">
+                {% if post.images and post.images|length > 0 %}
+                <div class="image-gallery g-{{ post.images|length if post.images|length <= 3 else 3 }}">
+                    {% for image in post.images %}
+                    <div class="gallery-img" onclick="openLightbox({{ loop.index0 }})">
+                        <img src="{{ image }}" alt="图片 {{ loop.index }}" loading="lazy">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if post.audio_url %}
+                <div class="audio-player-box">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    <audio controls preload="metadata">
+                        <source src="{{ post.audio_url }}" type="audio/mpeg">
+                    </audio>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Tags -->
+            {% if post.tags %}
+            <div class="tags-row">
+                {% for tag in post.tags %}
+                <a href="{{ url_for('post.by_tag', slug=tag.slug) }}" class="tag-pill" style="text-decoration:none;">#{{ tag.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Footer -->
+            <footer class="article-footer">
+                <div class="stats-row">
+                    <span class="stat-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        {{ post.view_count }}
+                    </span>
+                    <span class="stat-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        {{ post.reply_count }}
+                    </span>
+                    <span class="stat-item" id="like-count-display">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                        {{ post.like_count }}
+                    </span>
+                </div>
+                <div class="actions-row">
+                    <button class="action-btn" id="like-btn" onclick="likePost({{ post.id }})">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                        点赞
+                    </button>
+                    {% if current_user.is_authenticated and current_user.id != post.author_id %}
+                    <button class="action-btn" id="author-follow-btn" onclick="toggleAuthorFollow({{ post.author_id }})">
+                        + 关注作者
+                    </button>
+                    {% endif %}
+                    {% if ai_roast_enabled and not post.ai_reply_triggered %}
+                    <button class="action-btn" onclick="triggerAI({{ post.id }})">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        召唤AI
+                    </button>
+                    {% endif %}
+                    {% if current_user.is_authenticated and (current_user.id == post.author_id or current_user.is_admin()) %}
+                    <button class="action-btn" id="knowledge-btn" onclick="addToKnowledge({{ post.id }})">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        知识库
+                    </button>
+                    <a href="{{ url_for('post.edit', post_id=post.id) }}" class="action-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                        编辑
+                    </a>
+                    <button class="action-btn danger" onclick="deletePost({{ post.id }})">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        删除
+                    </button>
+                    {% endif %}
+                </div>
+            </footer>
+        </article>
+
+        <!-- Comments -->
+        <section class="comments-panel">
+            <div class="comments-header">
+                <h2 class="comments-title">评论</h2>
+                <span class="comments-count">{{ comments|length }} 条</span>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <div class="comment-compose">
+                <textarea id="comment-content" placeholder="写下你的想法…" rows="3"></textarea>
+                <div class="comment-compose-footer">
+                    <button class="compose-btn" id="comment-submit-btn" onclick="submitComment()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+                        发表评论
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="comment-compose">
+                <div class="compose-login-hint">
+                    <a href="{{ url_for('auth.login') }}">登录</a> 后发表评论
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="comment-list" id="comment-list">
+                {% for comment in comments %}
+                <div class="comment-item" style="animation-delay: {{ loop.index0 * 50 }}ms;">
+                    <div class="comment-avatar">
+                        {% if comment.is_ai_generated %}
+                        <div class="comment-ai-avatar">🤖</div>
+                        {% else %}
+                        <img src="{{ comment.author.avatar }}" alt="">
+                        {% endif %}
+                    </div>
+                    <div class="comment-body">
+                        <div class="comment-meta">
+                            <span class="comment-author-name">
+                                {% if comment.is_ai_generated %}AI 助手{% else %}{{ comment.author.username }}{% endif %}
+                            </span>
+                            {% if comment.is_ai_generated %}
+                            <span class="comment-ai-badge">AI</span>
+                            {% endif %}
+                            <span class="comment-time" data-time="{{ comment.created_at }}">{{ comment.created_at }}</span>
+                            {% if current_user.is_authenticated and not comment.is_ai_generated %}
+                            <button class="comment-like-btn" onclick="likeComment({{ comment.id }})" style="margin-left: auto; display: inline-flex; align-items: center; gap: 3px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                                <span class="comment-like-count" data-comment-id="{{ comment.id }}">{{ comment.like_count }}</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="comment-text {% if comment.is_ai_generated %}comment-ai{% endif %}">
+                            {{ comment.content|nl2br }}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="comment-empty">
+                    <div class="comment-empty-icon">💬</div>
+                    <p>暂无评论，来写第一条评论吧</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <!-- TOC Sidebar -->
+    <aside class="toc-aside" id="toc-sidebar" style="display: none;">
+        <div class="toc-card">
+            <div class="toc-heading">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                目录
+            </div>
+            <ul class="toc-list" id="toc-list"></ul>
+        </div>
+    </aside>
+</div>
+
+<!-- Lightbox -->
+{% if post.images and post.images|length > 0 %}
+<div class="lightbox-overlay" id="lightbox">
+    <button class="lb-close" onclick="closeLightbox()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    {% if post.images|length > 1 %}
+    <button class="lb-nav lb-prev" onclick="prevImage()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15,18 9,12 15,6"/></svg>
+    </button>
+    <button class="lb-nav lb-next" onclick="nextImage()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9,18 15,12 9,6"/></svg>
+    </button>
+    <div class="lb-counter" id="lb-counter">1 / {{ post.images|length }}</div>
+    {% endif %}
+    <img id="lightbox-img" src="" alt="预览">
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const postImages = {{ post.images|tojson if post.images else '[]' }};
+let currentImageIndex = 0;
+
+function openLightbox(index) {
+    currentImageIndex = index;
+    const lb = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    if (!lb || !img) return;
+    img.src = postImages[index];
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    updateCounter();
+}
+
+function closeLightbox() {
+    const lb = document.getElementById('lightbox');
+    if (lb) {
+        lb.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+function prevImage() {
+    currentImageIndex = (currentImageIndex - 1 + postImages.length) % postImages.length;
+    document.getElementById('lightbox-img').src = postImages[currentImageIndex];
+    updateCounter();
+}
+
+function nextImage() {
+    currentImageIndex = (currentImageIndex + 1) % postImages.length;
+    document.getElementById('lightbox-img').src = postImages[currentImageIndex];
+    updateCounter();
+}
+
+function updateCounter() {
+    const el = document.getElementById('lb-counter');
+    if (el) el.textContent = `${currentImageIndex + 1} / ${postImages.length}`;
+}
+
+document.addEventListener('keydown', function(e) {
+    const lb = document.getElementById('lightbox');
+    if (!lb || !lb.classList.contains('active')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') prevImage();
+    if (e.key === 'ArrowRight') nextImage();
+});
+
+document.getElementById('lightbox')?.addEventListener('click', function(e) {
+    if (e.target === this) closeLightbox();
+});
+
+// TOC generation
+function generateTOC() {
+    const content = document.getElementById('post-content');
+    const tocList = document.getElementById('toc-list');
+    const tocSidebar = document.getElementById('toc-sidebar');
+    if (!content || !tocList) return;
+
+    const headings = content.querySelectorAll('h2, h3');
+    if (headings.length < 2) return;
+
+    tocSidebar.style.display = 'block';
+
+    headings.forEach((heading, i) => {
+        const id = `heading-${i}`;
+        heading.id = id;
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = `#${id}`;
+        a.className = `toc-link ${heading.tagName === 'H3' ? 'level-3' : ''}`;
+        a.textContent = heading.textContent;
+        a.onclick = (e) => {
+            e.preventDefault();
+            heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        li.appendChild(a);
+        tocList.appendChild(li);
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                document.querySelectorAll('.toc-link').forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`);
+                });
+            }
+        });
+    }, { rootMargin: '-100px 0px -70% 0px' });
+
+    headings.forEach(h => observer.observe(h));
+}
+
+// Knowledge status
+async function checkKnowledgeStatus(postId) {
+    try {
+        const res = await fetch(`/ai/api/knowledge/check/${postId}`);
+        const data = await res.json();
+        if (data.success && data.in_knowledge) {
+            const btn = document.getElementById('knowledge-btn');
+            if (btn) {
+                btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20,6 9,17 4,12"/></svg> 已在知识库';
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            }
+        }
+    } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    generateTOC();
+    checkKnowledgeStatus({{ post.id }});
+    if (typeof addRunButtonsToCodeBlocks === 'function') {
+        setTimeout(addRunButtonsToCodeBlocks, 300);
+    }
+});
+
+async function addToKnowledge(postId) {
+    const btn = document.getElementById('knowledge-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '处理中…';
+    btn.disabled = true;
+    try {
+        const res = await Utils.post('/ai/api/knowledge/add', { post_id: postId });
+        if (res.success) {
+            btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20,6 9,17 4,12"/></svg> 已加入';
+            Utils.showToast(res.summarized ? '已生成摘要并加入知识库' : '已加入知识库', 'success');
+        } else {
+            btn.innerHTML = orig;
+            btn.disabled = false;
+            Utils.showToast(res.message || '添加失败', 'danger');
+        }
+    } catch (e) {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+        Utils.showToast('添加失败', 'danger');
+    }
+}
+
+async function likePost(postId) {
+    try {
+        const res = await Utils.post(`/post/${postId}/like`);
+        if (res.success) {
+            Utils.showToast(res.liked ? '已点赞' : '已取消点赞', 'success');
+            const countEl = document.getElementById('like-count-display');
+            const num = parseInt(countEl.textContent.match(/\d+/)[0]) || 0;
+            countEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> ${res.liked ? num + 1 : num - 1}`;
+            const btn = document.getElementById('like-btn');
+            if (res.liked) {
+                btn.classList.add('liked');
+                btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> 已赞';
+            } else {
+                btn.classList.remove('liked');
+                btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> 点赞';
+            }
+        } else {
+            Utils.showToast(res.message || '操作失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('请先登录', 'warning');
+    }
+}
+
+async function deletePost(postId) {
+    if (!confirm('确定要删除这篇帖子吗？此操作不可恢复。')) return;
+    try {
+        const res = await Utils.post(`/post/${postId}/delete`);
+        if (res.success) {
+            Utils.showToast('帖子已删除', 'success');
+            setTimeout(() => { window.location.href = '{{ url_for("main.index") }}'; }, 1000);
+        } else {
+            Utils.showToast(res.message || '删除失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('删除失败', 'danger');
+    }
+}
+
+async function triggerAI(postId) {
+    try {
+        const res = await Utils.post('/ai/api/roast/trigger', { post_id: postId });
+        if (res.success) {
+            Utils.showToast('AI吐槽已触发，请稍候刷新…', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            Utils.showToast(res.message || '触发失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('触发失败', 'danger');
+    }
+}
+
+// Comments
+async function submitComment() {
+    const textarea = document.getElementById('comment-content');
+    const content = textarea.value.trim();
+    if (!content) {
+        Utils.showToast('评论内容不能为空', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('comment-submit-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '提交中…';
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('content', content);
+        const res = await fetch('{{ url_for("post.add_comment", post_id=post.id) }}', {
+            method: 'POST', body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (data.pending) {
+                Utils.showToast('评论已提交，正在审核中', 'info');
+            } else {
+                Utils.showToast('评论成功', 'success');
+                addCommentToList(data.comment);
+            }
+            textarea.value = '';
+        } else {
+            Utils.showToast(data.message || '评论失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('评论失败: ' + e.message, 'danger');
+    } finally {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+}
+
+function addCommentToList(comment) {
+    const list = document.getElementById('comment-list');
+    if (!list) return;
+
+    const empty = list.querySelector('.comment-empty');
+    if (empty) empty.remove();
+
+    const el = document.createElement('div');
+    el.className = 'comment-item';
+    el.innerHTML = `
+        <div class="comment-avatar">
+            <img src="${comment.author.avatar || '/static/images/default-avatar.png'}" alt="">
+        </div>
+        <div class="comment-body">
+            <div class="comment-meta">
+                <span class="comment-author-name">${comment.author.username}</span>
+                <span class="comment-time">刚刚</span>
+            </div>
+            <div class="comment-text">${comment.content.replace(/\n/g, '<br>')}</div>
+        </div>
+    `;
+    list.insertBefore(el, list.firstChild);
+
+    const countEl = document.querySelector('.comments-count');
+    if (countEl) {
+        const num = parseInt(countEl.textContent.match(/\d+/)[0]) || 0;
+        countEl.textContent = `${num + 1} 条`;
+    }
+}
+
+// 显示摘要生成按钮
+{% if not post.summary %}
+document.addEventListener('DOMContentLoaded', function() {
+    const placeholder = document.getElementById('summary-placeholder');
+    if (placeholder) placeholder.style.display = 'block';
+});
+{% endif %}
+
+async function loadSummary(postId) {
+    try {
+        const res = await Utils.post(`/post/${postId}/summary`);
+        if (res.success && res.summary) {
+            location.reload();
+        } else {
+            Utils.showToast('生成摘要失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('生成摘要失败', 'danger');
+    }
+}
+
+async function toggleAuthorFollow(userId) {
+    const btn = document.getElementById('author-follow-btn');
+    if (!btn) return;
+    const isFollowing = btn.textContent.includes('已关注');
+    try {
+        const res = await Utils.post(`/follow/api/${isFollowing ? 'unfollow' : 'follow'}/${userId}`);
+        if (res.success) {
+            btn.textContent = isFollowing ? '+ 关注作者' : '✓ 已关注';
+            Utils.showToast(isFollowing ? '已取消关注' : '关注成功', 'success');
+        } else {
+            Utils.showToast(res.message || '操作失败', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('操作失败', 'danger');
+    }
+}
+
+async function likeComment(commentId) {
+    try {
+        const res = await Utils.post(`/post/comment/${commentId}/like`);
+        if (res.success) {
+            const countEl = document.querySelector(`.comment-like-count[data-comment-id="${commentId}"]`);
+            if (countEl) countEl.textContent = res.like_count;
+            Utils.showToast(res.liked ? '已点赞' : '已取消点赞', 'success');
+        }
+    } catch (e) {
+        Utils.showToast('操作失败', 'danger');
+    }
+}
+
+// SocketIO 实时推送
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        socket.emit('join_post', { post_id: {{ post.id }} });
+        socket.on('new_comment', function(data) {
+            if (data.post_id === {{ post.id }}) {
+                // 可选：实时追加评论到列表
+                // addCommentToList(data.comment);
+            }
+        });
+        socket.on('like_update', function(data) {
+            if (data.post_id === {{ post.id }}) {
+                const countEl = document.getElementById('like-count-display');
+                if (countEl && data.like_count !== undefined) {
+                    countEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> ${data.like_count}`;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
